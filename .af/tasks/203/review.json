@@ -1,0 +1,123 @@
+{
+  "verdict": "fail",
+  "dimensions": [
+    {
+      "name": "Requirements Met",
+      "score": 5,
+      "gaps_to_10": "1) X/Start key requirement violated — task specifies 'X/Start key' opens menu, but GameEngine only binds 'Enter'. The 'x' key is wired to CLOSE sub-screens (B button), not open the menu. 2) 'Would you like to save? YES/NO dialog' is completely absent — pressing Z on a save slot immediately saves with no confirmation dialog. 3) After browser refresh, party/inventory do NOT restore — GameEngine.constructor only uses the legacy engine/SaveSystem.ts (loadGame slot 0), which stores SaveSlotData (partyIds, tileX, tileY, etc.) and never touches systems/SaveSystem partyPokemon or inventory fields. 4) Party rearrange swap logic is entirely missing — renderPartyScreen supports a 'rearrange' mode prop but MenuSystem never enters rearrange mode and there is no swap implementation. 5) HP bar animation when using a Potion is absent — the spec requires 'HP bar animates upward by exactly 20'; there is no animation at all, and item use is not even wired up from the bag screen. 6) Pokemon summary screen is rendered by renderPokemonSummary but is unreachable from MenuSystem — pressing Z on a Pokemon in the party screen is not implemented."
+    },
+    {
+      "name": "Error Handling",
+      "score": 8,
+      "gaps_to_10": "QuotaExceededError is caught in writeStore. JSON parse errors return null. useItem returns {success:false} instead of throwing. removeItem throws ItemInsufficientError as documented. Minor gap: useStorageWarning uses a module-level 'saveAvailable' flag that is mutated after a failed write but the React hook only reads it once at mount (via useState), so if a quota error occurs after the page loads the hook will never re-render to reflect the new state — the user will see no warning even though saving is silently broken."
+    },
+    {
+      "name": "UX Completeness",
+      "score": 4,
+      "gaps_to_10": "1) No YES/NO confirmation before saving — direct destructive action. 2) No item-use flow from the bag: user cannot actually apply a Potion to a Pokemon; the submenu renders but pressing USE does nothing. 3) Party navigation cursor is hardcoded to 0 in render (renderPartyScreen always called with selectedIndex=0); the POKEMON view has no arrow-key navigation in MenuSystem. 4) Party rearrange completely missing. 5) Pokemon summary screen is unreachable. 6) Options screen is wired up in render but settings are hardcoded literals ({textSpeed:'MID', sound:'MONO', scale:'2X'}, selectedRow always 0) — no actual state, no input handling, pure placeholder."
+    },
+    {
+      "name": "Code Quality",
+      "score": 7,
+      "gaps_to_10": "1) Mid-file import in GameState.ts ('import type { PokemonInstance }' appears after interface declarations on line 54) — non-standard and can confuse bundlers. 2) GameEngine.update has 'void dt' twice as a no-op to silence unused-variable lint warnings instead of proper fix. 3) MenuRenderer specifies font as '6px' but the spec says '8px'. 4) saveAvailable and saveUnavailableMessage are module-level mutable singletons; in tests or SSR contexts this can bleed between test runs. 5) The two SaveSystem implementations (engine/SaveSystem vs systems/SaveSystem) use completely different schemas and keys; startup loading uses the legacy one, writing uses the new one — no migration or unification path exists."
+    },
+    {
+      "name": "Test Coverage",
+      "score": 7,
+      "gaps_to_10": "All specified tests pass (85/85). Missing: 1) No test for the 'saveAvailable module flag not re-read after first mount' bug in useStorageWarning. 2) No test confirming Potion count decrements (removeItem is tested in isolation but no integration test for useItem + removeItem together). 3) No test for Super Potion (+50 HP cap), Full Restore, Full Heal, Paralyz Heal — only Potion, Revive, Antidote, and Pokeball are covered. 4) No test for party swap. 5) No test that after-refresh party/inventory state is restored."
+    },
+    {
+      "name": "Security",
+      "score": 10,
+      "gaps_to_10": "No hardcoded API keys or credentials found. localStorage data is sanitised through JSON.parse round-trip with schema version check. No XSS vectors — all rendering is canvas-based. No issues."
+    }
+  ],
+  "average_score": 6.83,
+  "issues": [
+    {
+      "severity": "P1",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "Menu opens on 'Enter' key only. The requirement specifies 'X/Start key in overworld'. The current binding conflicts with the footer hint shown to the user ('Enter: Menu') and may be the intended key, but the requirement text explicitly says X/Start. More critically, the save-close binding in handleStartMenu (line 78) fires on 'x' OR 'Escape' OR 'Enter', meaning pressing Enter while a menu item is highlighted first checks this condition and closes instead of navigating. This makes it impossible to select menu items with Enter if the player opened the menu with Enter — the first Enter press opens the menu and immediately the next in the same frame could close it, depending on timing.",
+      "fix_guidance": "The correct approach is to use 'Enter' (or a configurable Start binding) as the open trigger, and ensure the close-on-same-key logic only fires on the CLOSE key (typically 'x' or 'Escape'), not the same key that opened the menu. Remove 'Enter' from the close condition in handleStartMenu, or add an 'openKey' field to MenuSystem so the open key and close key are distinguished.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/systems/MenuSystem.ts",
+      "description": "No YES/NO confirmation dialog before saving. The requirement states: 'User selects SAVE → Would you like to save? YES/NO dialog → YES → brief SAVING... animation → data written to localStorage'. In handleSaveView (line 93), pressing Z immediately calls save() and sets isSaving=true with no confirmation step. The SAVING... animation does render, but the YES/NO dialog is entirely absent.",
+      "fix_guidance": "The correct approach is to add a 'SAVE_CONFIRM' sub-state to MenuSystem with a boolean confirmIndex (0=YES, 1=NO). When the player presses Z on a slot, enter the SAVE_CONFIRM sub-state and render a 'Would you like to save?' dialog with YES/NO options. Only call save() if the player selects YES. The renderSaveSlotScreen or a new renderConfirmDialog function should display this overlay.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "After browser refresh, partyPokemon and inventory do NOT restore from localStorage. GameEngine.constructor (line 52) calls loadGame(0) from the legacy engine/SaveSystem, which reads SaveSlotData containing only tileX/tileY/currentMap/partyIds/badges/money. The new systems/SaveSystem saves partyPokemon and inventory under 'pokebrowser_save_v1', but GameEngine never calls load() from systems/SaveSystem at startup. The requirement states 'party, inventory, position all match saved state' after refresh.",
+      "fix_guidance": "The correct approach is to import load() from systems/SaveSystem in GameEngine.ts, call it at constructor time to retrieve the NewSaveSlot for the active slot, and then apply entry.gameState.partyPokemon and entry.gameState.inventory to this.state before starting the loop. Alternatively, unify both SaveSystem implementations into one. The simplest fix: in GameEngine.constructor, after createInitialGameState(), attempt to load slot 1 (or whichever activeSlot is stored), and spread the partial gameState into this.state if found.",
+      "checklist_item": "persistence"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/systems/MenuSystem.ts",
+      "description": "Party rearrange swap logic is completely missing. The requirement states: 'user selects Pokemon A, then selects Pokemon B slot → they swap positions in party array'. MenuSystem has no rearrange state, no firstSelectedIndex tracking, and never mutates state.partyPokemon. The renderPartyScreen function does accept a 'rearrange' mode parameter but it is never invoked with that mode.",
+      "fix_guidance": "The correct approach is to add private rearrangeFirstIndex: number | null = null to MenuSystem. When POKEMON view is active and the player presses Z: if rearrangeFirstIndex is null, set it to the current partyIndex; otherwise perform the swap: const tmp = state.partyPokemon[rearrangeFirstIndex]; state.partyPokemon[rearrangeFirstIndex] = state.partyPokemon[partyIndex]; state.partyPokemon[partyIndex] = tmp; then reset rearrangeFirstIndex to null. Also add ArrowUp/ArrowDown navigation to update a private partyIndex field in the POKEMON view handler, and pass rearrangeFirstIndex !== null ? 'rearrange' : 'select' as the mode to renderPartyScreen.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/systems/MenuSystem.ts",
+      "description": "Item use flow from the bag is not implemented. The bag submenu (USE/GIVE/TOSS/CANCEL) renders correctly but pressing Z in the ITEM view is not handled at all — the entire handler for ITEM view only checks for back navigation (x/Escape) and category switching. useItem() from InventorySystem is never called, Potion count never decrements, and the HP bar never changes. The requirement specifies a complete Potion→Pokemon HP animation flow.",
+      "fix_guidance": "The correct approach is to add handling for Z key in the ITEM view: (1) show the USE/GIVE/TOSS/CANCEL submenu by setting a private showSubMenu flag; (2) when USE is confirmed, transition to a party-picker sub-state; (3) when a Pokemon is selected, call useItem(selectedItemId, target, 'field'); (4) if result.success, call removeItem on state.inventory and update state.partyPokemon with result.updatedPokemon; (5) store the old HP and new HP values to drive an HP bar animation on the next few render frames (lerp currentHp from old to new over ~500ms).",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/systems/SaveSystem.ts",
+      "description": "useStorageWarning hook does not re-render when saveAvailable module flag changes. The hook captures saveAvailable at render time (line 116: const available = storageOk && saveAvailable) but saveAvailable is a module-level let that can be set to false asynchronously (after a failed write). Because there is no React state update tied to saveAvailable, the hook will never cause a re-render when a quota error occurs after the initial mount. The user will see no warning even though saving is silently failing.",
+      "fix_guidance": "The correct approach is to replace the module-level saveAvailable flag with a React-compatible event system. Options: (a) use a React Context with a provider that listens for a custom Event dispatched when saveAvailable turns false; (b) expose a useSyncExternalStore() hook that subscribes to a module-level subject; (c) use a simple event emitter pattern with subscribe/unsubscribe. The simplest fix is to dispatch a globalThis window event ('pokebrowser:savefail') inside writeStore() and subscribe to it inside useStorageWarning with useEffect, updating local useState accordingly.",
+      "checklist_item": "error_handling"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/systems/MenuSystem.ts",
+      "description": "Pokemon party view has no cursor navigation. MenuSystem.update for the POKEMON view (line 65) only handles back navigation (x/Escape). There is no partyIndex state, no ArrowUp/ArrowDown handling, and renderPartyScreen is always called with selectedIndex=0 (line 115). The user cannot navigate between party slots or select a Pokemon to view its summary.",
+      "fix_guidance": "The correct approach is to add a private partyIndex = 0 field to MenuSystem and handle ArrowUp/ArrowDown in the POKEMON branch to move it within [0, state.partyPokemon.length-1]. Pass partyIndex to renderPartyScreen. Add handling for Z to either open the Pokemon summary (set activeView = 'SUMMARY' with a private summaryPokemon reference) or initiate rearrange.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P2",
+      "file": "src/game/types/GameState.ts",
+      "description": "Import statement at line 54 ('import type { PokemonInstance }') is placed in the middle of the file, after the interface declarations that need it but inside the module body after interface/type blocks. TypeScript hoists type imports so this compiles, but it is a non-standard pattern that can confuse bundlers and linters. The import should be at the top of the file.",
+      "fix_guidance": "Move 'import type { PokemonInstance } from ./PokemonTypes' to the top of the file, before any interface or type declarations.",
+      "checklist_item": "architecture"
+    },
+    {
+      "severity": "P2",
+      "file": "src/game/renderers/MenuRenderer.ts",
+      "description": "Font size for menu items is '6px' (constant FONT on line 3) but the checklist spec requires 8px ('Press Start 2P 8px font'). At 6px the Press Start 2P font is barely legible on the 160×144 viewport.",
+      "fix_guidance": "Change FONT constant to '8px \"Press Start 2P\", monospace'. Verify that menu item labels still fit within the 72px panel width at 8px size; if not, increase PANEL_W or abbreviate labels.",
+      "checklist_item": "ux"
+    },
+    {
+      "severity": "P2",
+      "file": "src/game/systems/MenuSystem.ts",
+      "description": "OPTIONS screen is a non-functional placeholder. Settings are hardcoded literals ({textSpeed:'MID', sound:'MONO', scale:'2X'}) with selectedRow always 0 and no input handling. Changes to options have no effect on game behavior. While options persistence is not explicitly required, rendering a non-interactive screen is misleading.",
+      "fix_guidance": "Either wire up options to GameState.flags with ArrowLeft/ArrowRight cycling through values and persist them in the save, or remove OPTIONS from the menu until it is implemented. Do not ship a screen that accepts no input and stores no data.",
+      "checklist_item": "ux"
+    },
+    {
+      "severity": "P2",
+      "file": "src/game/systems/SaveSystem.ts",
+      "description": "saveAvailable and saveUnavailableMessage are module-level mutable state. In test environments with module caching, a failed save in one test can pollute subsequent tests. The test suite clears localStorage between runs but does not reset these module-level flags.",
+      "fix_guidance": "Export a resetModuleState() function for test use, or convert to class-based state. In tests/save-system.test.ts, add a beforeEach that resets these via the exported reset function.",
+      "checklist_item": "test_quality"
+    },
+    {
+      "severity": "P2",
+      "file": "tests/save-system.test.ts",
+      "description": "No tests for Super Potion (+50 HP cap), Full Restore (HP=maxHp + clear status), Full Heal (any status), Paralyz Heal (paralysis only). The plan's expected_tests list includes these items but only Potion, Revive, Antidote, and Pokeball are tested.",
+      "fix_guidance": "Add test cases for useItem with itemId 5 (Super Potion), itemId 6 (Full Restore — verify both HP and status cleared), itemId 8 (Parlyz Heal — verify only paralysis cleared), itemId 9 (Full Heal — verify any status cleared).",
+      "checklist_item": "test_quality"
+    }
+  ],
+  "summary": "The implementation delivers the scaffolding and rendering infrastructure for menus, inventory, and a save system, and all 85 tests pass. However, multiple P1 requirements are either missing or broken: (1) the SAVE flow skips the required YES/NO confirmation dialog; (2) partyPokemon and inventory are never restored from localStorage on page refresh because GameEngine still uses the legacy engine/SaveSystem rather than the new systems/SaveSystem; (3) party rearrange swap logic is entirely absent despite the renderer supporting a 'rearrange' mode; (4) item use from the bag screen is not wired up — useItem() is never called from MenuSystem and HP bars never animate; (5) the POKEMON view has no cursor navigation and the summary screen is unreachable; (6) useStorageWarning uses a module-level flag that React cannot detect changing after mount, so quota-exceeded errors are silently swallowed with no user notification. The rendering layer (MenuRenderer, PartyRenderer, BagRenderer, SummaryRenderer, PCRenderer) is well-structured and correctly split into sub-files. SaveSystem and InventorySystem are individually correct and fully tested. The gap is in MenuSystem wiring and the missing startup-load integration in GameEngine."
+}
