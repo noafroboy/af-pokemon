@@ -4,6 +4,7 @@ import { encounterFlash } from './TransitionRenderer'
 import { drawEnemyPanel, drawPlayerPanel } from './battle/PanelRenderer'
 import type { AnimState } from './battle/PanelRenderer'
 import { drawActionMenu, drawMoveMenu, drawDialogText } from './battle/MenuRenderer'
+import { getPokemonSprite } from '../engine/AssetLoader'
 
 const VIEWPORT_W = 160
 const VIEWPORT_H = 144
@@ -39,13 +40,27 @@ export class BattleRenderer {
     ctx.fillStyle = '#c8e8c8'
     ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H - 48)
 
-    // Enemy sprite placeholder (front)
-    ctx.fillStyle = '#666688'
-    ctx.fillRect(88, 16, 48, 48)
+    // Enemy sprite (front) — falls back to colored rect if sprite not loaded
+    const enemySprite = getPokemonSprite(battle.wildPokemon.speciesId, 'front')
+    if (enemySprite) {
+      ctx.drawImage(enemySprite, 88, 16, 48, 48)
+    } else {
+      ctx.fillStyle = '#666688'
+      ctx.fillRect(88, 16, 48, 48)
+      ctx.fillStyle = '#ffffff'
+      ctx.font = '4px monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText(`#${battle.wildPokemon.speciesId}`, 112, 44)
+    }
 
-    // Player sprite placeholder (back)
-    ctx.fillStyle = '#886666'
-    ctx.fillRect(16, 56, 48, 40)
+    // Player sprite (back) — falls back to colored rect if sprite not loaded
+    const playerSprite = getPokemonSprite(battle.playerPokemon.speciesId, 'back')
+    if (playerSprite) {
+      ctx.drawImage(playerSprite, 16, 56, 48, 40)
+    } else {
+      ctx.fillStyle = '#886666'
+      ctx.fillRect(16, 56, 48, 40)
+    }
 
     drawEnemyPanel(ctx, battle, this.anim)
     drawPlayerPanel(ctx, battle, this.anim)

@@ -61,8 +61,12 @@ export class OverworldRenderer {
         const { x: sx, y: sy } = camera.worldToScreen(worldX, worldY)
 
         if (tileset) {
-          const srcX = (tileIndex - 1) * TILE_SIZE
-          ctx.drawImage(tileset, srcX, 0, TILE_SIZE, TILE_SIZE, sx, sy, TILE_SIZE, TILE_SIZE)
+          // 16×16 grid layout: each tile's source position is computed from its index.
+          // The formula adapts to the actual image resolution (e.g. 1024×1024 or 256×256).
+          const srcTileSize = tileset.naturalWidth / 16
+          const srcX = (tileIndex % 16) * srcTileSize
+          const srcY = Math.floor(tileIndex / 16) * srcTileSize
+          ctx.drawImage(tileset, srcX, srcY, srcTileSize, srcTileSize, sx, sy, TILE_SIZE, TILE_SIZE)
         } else {
           drawFallback(ctx, sx, sy, TILE_SIZE, TILE_SIZE, tileIndex)
         }

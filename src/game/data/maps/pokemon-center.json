@@ -3,7 +3,7 @@
   "width": 15,
   "height": 10,
   "tileSize": 16,
-  "tilesetPath": "assets/tilesets/overworld.png",
+  "tilesetPath": "assets/tiles/overworld.png",
   "layers": {
     "terrain": [
       4,
