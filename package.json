@@ -11,7 +11,8 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
-    "generate-sfx": "node scripts/generate-sfx.mjs"
+    "generate-sfx": "node scripts/generate-sfx.mjs",
+    "generate-assets": "node scripts/generate-assets.mjs"
   },
   "dependencies": {
     "howler": "^2.2.4",

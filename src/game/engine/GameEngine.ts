@@ -16,7 +16,7 @@ import { OverworldRenderer } from '../renderers/OverworldRenderer'
 import { BattleRenderer } from '../renderers/BattleRenderer'
 import { renderDialog, renderNameEntry } from '../renderers/DialogRenderer'
 import { encounterFlash } from '../renderers/TransitionRenderer'
-import { setMapCache } from './AssetLoader'
+import { setMapCache, loadImage, preloadAllAssets } from './AssetLoader'
 import { loadGame, getDefaultSaveData } from './SaveSystem'
 import { AudioManager } from './AudioManager'
 
@@ -95,6 +95,9 @@ export class GameEngine {
     this.input.setFirstGestureCallback(() => this.audio.onFirstGesture())
     // Queue title music — will play on first user interaction
     this.audio.playMusic('title-theme')
+
+    // Kick off background asset preloading (non-blocking)
+    preloadAllAssets().catch(() => { /* warnings logged inside preloadAllAssets */ })
   }
 
   private loadMap(mapId: string): void {
@@ -111,6 +114,10 @@ export class GameEngine {
       this.camera.setMap(map.width, map.height)
       this.camera.update(this.player.tileX, this.player.tileY)
       this.npcSystem.loadFromMap(map, this.state)
+      // Pre-load tileset image so OverworldRenderer can use it immediately
+      if (map.tilesetPath) {
+        loadImage(map.tilesetPath).catch(() => { /* fallback rendering used */ })
+      }
       // Track last Pokemon Center
       if (mapId === 'pokemon-center') {
         this.state.lastPokemonCenter = {
