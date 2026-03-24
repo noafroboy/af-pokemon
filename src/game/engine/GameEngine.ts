@@ -9,6 +9,7 @@ import { EncounterSystem } from '../systems/EncounterSystem'
 import { BattleSystem } from '../systems/BattleSystem'
 import { OverworldRenderer } from '../renderers/OverworldRenderer'
 import { BattleRenderer } from '../renderers/BattleRenderer'
+import { encounterFlash } from '../renderers/TransitionRenderer'
 import { setMapCache } from './AssetLoader'
 import { loadGame, getDefaultSaveData } from './SaveSystem'
 
@@ -35,6 +36,7 @@ export class GameEngine {
   private running = false
   private rafId: number | null = null
   private errorMessage: string | null = null
+  private isEncounterTransition = false
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx
@@ -127,10 +129,14 @@ export class GameEngine {
           this.state.phase = GamePhase.TRANSITION
           this.state.transitionTimer = TRANSITION_FRAMES
           this.state.transitionTarget = result.target
+          this.isEncounterTransition = false
         } else if (result.type === 'ENCOUNTER') {
           const battle = this.encounterSystem.startEncounter(result.encounterTable, this.state)
           if (battle) {
-            this.state.phase = GamePhase.BATTLE
+            this.state.phase = GamePhase.TRANSITION
+            this.state.transitionTimer = TRANSITION_FRAMES
+            this.state.transitionTarget = null
+            this.isEncounterTransition = true
             this.battleSystem.setBattleState(battle)
           }
         }
@@ -139,7 +145,10 @@ export class GameEngine {
       case GamePhase.TRANSITION: {
         this.state.transitionTimer--
         if (this.state.transitionTimer <= 0) {
-          if (this.state.transitionTarget) {
+          if (this.isEncounterTransition) {
+            this.isEncounterTransition = false
+            this.state.phase = GamePhase.BATTLE
+          } else if (this.state.transitionTarget) {
             this.state.currentMap = this.state.transitionTarget.map
             this.player.tileX = this.state.transitionTarget.tileX
             this.player.tileY = this.state.transitionTarget.tileY
@@ -147,8 +156,10 @@ export class GameEngine {
             this.player.moveQueue = []
             this.loadMap(this.state.currentMap)
             this.state.transitionTarget = null
+            this.state.phase = GamePhase.OVERWORLD
+          } else {
+            this.state.phase = GamePhase.OVERWORLD
           }
-          this.state.phase = GamePhase.OVERWORLD
         }
         break
       }
@@ -181,8 +192,12 @@ export class GameEngine {
           this.overworldRenderer.render(this.ctx, this.currentMap, this.player, this.camera, interpolation)
         }
         const progress = 1 - this.state.transitionTimer / TRANSITION_FRAMES
-        this.ctx.fillStyle = `rgba(0,0,0,${progress})`
-        this.ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H)
+        if (this.isEncounterTransition) {
+          encounterFlash(this.ctx, progress)
+        } else {
+          this.ctx.fillStyle = `rgba(0,0,0,${progress})`
+          this.ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H)
+        }
         break
       }
       case GamePhase.BATTLE:

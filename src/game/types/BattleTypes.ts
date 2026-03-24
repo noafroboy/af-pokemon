@@ -1,5 +1,26 @@
 import type { PokemonInstance } from './PokemonTypes'
 
+export type BattlePhase =
+  | 'INTRO'
+  | 'SELECT_ACTION'
+  | 'SELECT_MOVE'
+  | 'ANIMATING'
+  | 'ENEMY_TURN'
+  | 'CHECK_END'
+  | 'END'
+
+export interface PlayerAction {
+  type: 'FIGHT' | 'ITEM' | 'RUN' | 'SWITCH'
+  moveIndex?: number   // FIGHT: 0-3
+  itemId?: number      // ITEM: 1=Pokeball, 2=GreatBall, 3=UltraBall
+  switchTo?: number    // SWITCH: party index
+}
+
+export interface AIAction {
+  type: 'FIGHT'
+  moveIndex: number
+}
+
 export type BattleEventType =
   | 'DAMAGE'
   | 'STATUS_INFLICTED'
@@ -12,6 +33,8 @@ export type BattleEventType =
   | 'LEVEL_UP'
   | 'ESCAPE'
   | 'MESSAGE'
+  | 'IMMUNE'
+  | 'MISS'
 
 export interface DamageEvent {
   type: 'DAMAGE'
@@ -78,6 +101,16 @@ export interface MessageEvent {
   text: string
 }
 
+export interface ImmuneEvent {
+  type: 'IMMUNE'
+  target: 'player' | 'wild'
+}
+
+export interface MissEvent {
+  type: 'MISS'
+  user: 'player' | 'wild'
+}
+
 export type BattleEvent =
   | DamageEvent
   | StatusInflictedEvent
@@ -90,9 +123,12 @@ export type BattleEvent =
   | LevelUpEvent
   | EscapeEvent
   | MessageEvent
+  | ImmuneEvent
+  | MissEvent
 
 export interface BattleState {
   wildPokemon: PokemonInstance
+  playerPokemon: PokemonInstance
   playerPartyIndex: number
   turn: number
   events: BattleEvent[]
@@ -106,4 +142,7 @@ export interface BattleState {
     player: Record<string, number>
     wild: Record<string, number>
   }
+  battlePhase: BattlePhase
+  cursorIndex: number
+  sleepTurns: { player: number; wild: number }
 }

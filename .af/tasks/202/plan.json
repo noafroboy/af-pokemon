@@ -1,0 +1,174 @@
+{
+  "files_to_modify": [
+    {
+      "path": "src/game/types/BattleTypes.ts",
+      "reason": "Add PlayerAction, AIAction, BattlePhase types; add playerPokemon, battlePhase, cursorIndex, sleepTurns fields to BattleState"
+    },
+    {
+      "path": "src/game/systems/BattleSystem.ts",
+      "reason": "Replace stub with full Gen 1 battle logic; export processTurn() pure function; keep BattleSystem class with input/menu navigation"
+    },
+    {
+      "path": "src/game/renderers/BattleRenderer.ts",
+      "reason": "Full battle screen layout: panels, HP/EXP bars, action/move menus, animations, status badges"
+    },
+    {
+      "path": "src/game/systems/EncounterSystem.ts",
+      "reason": "Add playerPokemon (first non-fainted party member, defaulting to Bulbasaur if party empty) to BattleState initialization; set battlePhase to INTRO"
+    },
+    {
+      "path": "src/game/engine/GameEngine.ts",
+      "reason": "Update BATTLE phase render to use TransitionRenderer.encounterFlash; pass updated BattleState to BattleRenderer"
+    }
+  ],
+  "files_to_create": [
+    {
+      "path": "src/game/systems/battle/DamageCalc.ts",
+      "reason": "Pure Gen 1 damage formula, STAB, critical hit, type effectiveness helpers; extracted to keep BattleSystem.ts under 150 lines"
+    },
+    {
+      "path": "src/game/systems/battle/StatusEffects.ts",
+      "reason": "Status condition logic: paralysis per-turn check, poison/burn end-of-turn damage, sleep duration tracking, freeze thaw; extracted for size"
+    },
+    {
+      "path": "src/game/systems/battle/CatchSystem.ts",
+      "reason": "Gen 1 catch rate formula, wobble count, 4-shake algorithm; extracted for size"
+    },
+    {
+      "path": "src/game/systems/battle/ExpSystem.ts",
+      "reason": "EXP gain for wild/trainer battles, level-up threshold lookup per expGroup; extracted for size"
+    },
+    {
+      "path": "src/game/systems/battle/MoveSelection.ts",
+      "reason": "AI selectMove() (random valid PP move), Struggle fallback definition; extracted for size"
+    },
+    {
+      "path": "src/game/renderers/TransitionRenderer.ts",
+      "reason": "Frame-interpolated transitions: encounterFlash (scanline expand), fadeToBlack, badgeZoom"
+    },
+    {
+      "path": "src/game/renderers/battle/PanelRenderer.ts",
+      "reason": "Enemy/player info panels, HP bar with animated drain, EXP bar with animated fill, status badge pills; extracted from BattleRenderer"
+    },
+    {
+      "path": "src/game/renderers/battle/MenuRenderer.ts",
+      "reason": "Action menu (FIGHT/POKEMON/ITEM/RUN 2x2 grid) and move menu (4 moves with type badge + PP); extracted from BattleRenderer"
+    },
+    {
+      "path": "tests/damage-formula.test.ts",
+      "reason": "Vitest tests for Gen 1 damage formula: specific matchup ranges, type effectiveness, immunity, critical hit"
+    },
+    {
+      "path": "tests/battle-system.test.ts",
+      "reason": "Vitest tests for battle logic: status conditions, PP tracking, stat stages, level-up events"
+    },
+    {
+      "path": "tests/catch-formula.test.ts",
+      "reason": "Vitest tests for Gen 1 catch formula: catchRate values at various HP levels and ball types, wobble count"
+    }
+  ],
+  "approach": "APPROACH_A_CONSERVATIVE",
+  "approach_rationale": "Use existing class structures and extend them. Keep BattleSystem class as GameEngine entry point; add processTurn() as exported pure function alongside it. Minimize GameEngine changes. Use sub-module files to enforce size limits.",
+  "steps": [
+    {
+      "step": 1,
+      "action": "Create git branch af/202-battle-system-engine-wild-encounter-full/4"
+    },
+    {
+      "step": 2,
+      "action": "Update BattleTypes.ts: add PlayerAction, AIAction, BattlePhase types; extend BattleState with playerPokemon, battlePhase, cursorIndex, sleepTurns"
+    },
+    {
+      "step": 3,
+      "action": "Create battle sub-modules: DamageCalc.ts, StatusEffects.ts, CatchSystem.ts, ExpSystem.ts, MoveSelection.ts"
+    },
+    {
+      "step": 4,
+      "action": "Replace BattleSystem.ts with full Gen 1 logic: processTurn() function + updated BattleSystem class for input/menu navigation"
+    },
+    {
+      "step": 5,
+      "action": "Create TransitionRenderer.ts with encounterFlash, fadeToBlack, badgeZoom"
+    },
+    {
+      "step": 6,
+      "action": "Create battle renderer sub-files: PanelRenderer.ts, MenuRenderer.ts"
+    },
+    {
+      "step": 7,
+      "action": "Replace BattleRenderer.ts with full layout (160x144 canvas): delegates to PanelRenderer and MenuRenderer; handles animation state internally"
+    },
+    {
+      "step": 8,
+      "action": "Update EncounterSystem.ts: set playerPokemon (create Bulbasaur Lv.5 as default), set battlePhase=INTRO, set sleepTurns={player:0, wild:0}"
+    },
+    {
+      "step": 9,
+      "action": "Update GameEngine.ts: handle TransitionRenderer for encounter flash in TRANSITION render phase; no logic changes to battle update path"
+    },
+    {
+      "step": 10,
+      "action": "Create tests/damage-formula.test.ts, tests/battle-system.test.ts, tests/catch-formula.test.ts"
+    },
+    {
+      "step": 11,
+      "action": "Run npm test, verify all tests pass including existing ones"
+    },
+    {
+      "step": 12,
+      "action": "Commit and push; write pr-body.md"
+    }
+  ],
+  "expected_tests": [
+    "tests/damage-formula.test.ts: Bulbasaur Lv5 Tackle vs Rattata Lv3 → damage [3,5]",
+    "tests/damage-formula.test.ts: Charmander Lv10 Ember vs Bulbasaur Lv10 → super effective range",
+    "tests/damage-formula.test.ts: Water Gun vs Geodude → 2× effectiveness",
+    "tests/damage-formula.test.ts: Move vs immune type → 0 damage, BattleEvent IMMUNE",
+    "tests/damage-formula.test.ts: Critical hit multiplier = 2×",
+    "tests/battle-system.test.ts: Paralysis Math.random()=0.24 → can move",
+    "tests/battle-system.test.ts: Paralysis Math.random()=0.25 → fully paralyzed",
+    "tests/battle-system.test.ts: Poison damage = floor(maxHp/16) per turn",
+    "tests/battle-system.test.ts: Sleep prevents action; wakes after duration",
+    "tests/battle-system.test.ts: PP decrements on move use; all PP=0 → Struggle",
+    "tests/battle-system.test.ts: +1 Attack stage → 1.5× multiplier in damage",
+    "tests/battle-system.test.ts: MEDIUM_FAST Lv4 gains enough EXP → LEVEL_UP event",
+    "tests/catch-formula.test.ts: Rattata 1HP Pokeball → modifiedRate >= 200",
+    "tests/catch-formula.test.ts: Rattata full HP Pokeball → modifiedRate < 100",
+    "tests/catch-formula.test.ts: Rattata half HP Great Ball → mid-range",
+    "tests/catch-formula.test.ts: wobble count = floor(modifiedRate/12)",
+    "src/game/__tests__/EncounterSystem.test.ts: existing tests still pass",
+    "src/game/__tests__/PokemonInstance.test.ts: existing tests still pass"
+  ],
+  "risk_areas": [
+    {
+      "risk": "BattleState interface change breaks EncounterSystem.test.ts",
+      "mitigation": "Add new fields with defaults; ensure EncounterSystem always populates them; check existing test assertions"
+    },
+    {
+      "risk": "playerPokemon party system incomplete - no UUID→PokemonInstance lookup",
+      "mitigation": "Default to Bulbasaur Lv.5 for MVP; note limitation in code comments"
+    },
+    {
+      "risk": "processTurn paralysis threshold boundary (0.24 vs 0.25)",
+      "mitigation": "Implement as Math.random() >= 0.25 → paralyzed to match test spec exactly"
+    },
+    {
+      "risk": "Gen 1 catch rate formula ambiguity",
+      "mitigation": "Use formula as specified in task: floor(catchRate*(3*max-2*cur)/(3*max))*ballBonus; test verifies specific values"
+    },
+    {
+      "risk": "BattleRenderer animation state (requestAnimationFrame vs game loop)",
+      "mitigation": "Use game-loop based animation with Date.now() timestamps stored in BattleRenderer instance"
+    },
+    {
+      "risk": "File size limit (150 lines) for complex systems",
+      "mitigation": "Split into sub-modules under src/game/systems/battle/ and src/game/renderers/battle/"
+    },
+    {
+      "risk": "EncounterSystem test checks currentMessage contains 'RATTATA'",
+      "mitigation": "Keep existing message format in startEncounter; don't change the message template"
+    }
+  ],
+  "persistence_strategy": "Game state persists via existing SaveSystem (localStorage). PokemonInstance for player created fresh each session (MVP limitation - party persistence system incomplete). Wild Pokemon created at encounter time. Battle state is in-memory for duration of battle only.",
+  "error_handling_approach": "BattleSystem.processTurn() handles null/undefined state gracefully. EncounterSystem.startEncounter() already has try/catch. GameEngine already has error recovery with red screen. BattleRenderer renders 'Loading...' fallback when battle state is null."
+}

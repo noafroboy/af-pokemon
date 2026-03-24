@@ -19,6 +19,7 @@ export default function GameCanvas() {
 
     const ctx = canvas.getContext('2d')
     if (!ctx) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setError('Canvas 2D context not available')
       return
     }
