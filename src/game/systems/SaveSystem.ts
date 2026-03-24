@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import type { GameState, NewSaveSlot, SaveSlotSummary } from '../types/GameState'
 
 export const SAVE_KEY = 'pokebrowser_save_v1'
@@ -111,21 +111,12 @@ export function autoSave(gameState: GameState): void {
 }
 
 export function useStorageWarning(): { available: boolean; message: string | null } {
-  const [available, setAvailable] = useState(true)
-  const [message, setMessage] = useState<string | null>(null)
+  const [storageOk] = useState(() => isAvailable())
 
-  useEffect(() => {
-    const ok = isAvailable()
-    setAvailable(ok)
-    if (!ok) setMessage('Save data unavailable — progress won\'t be saved.')
-  }, [])
+  const available = storageOk && saveAvailable
+  const message = available
+    ? null
+    : saveUnavailableMessage ?? 'Save data unavailable — progress won\'t be saved.'
 
-  useEffect(() => {
-    if (!saveAvailable) {
-      setAvailable(false)
-      setMessage(saveUnavailableMessage)
-    }
-  }, [])
-
-  return { available: available && saveAvailable, message: message ?? saveUnavailableMessage }
+  return { available, message }
 }
