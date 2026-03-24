@@ -25,6 +25,11 @@ export interface WarpDefinition {
   direction: 'north' | 'south' | 'east' | 'west'
 }
 
+export interface TrainerPartyEntry {
+  speciesId: number
+  level: number
+}
+
 export interface NPCDefinition {
   id: string
   tileX: number
@@ -33,6 +38,14 @@ export interface NPCDefinition {
   spriteId: number
   dialog: string[]
   movementType: 'static' | 'wander' | 'patrol'
+  isTrainer?: boolean
+  trainerId?: string
+  party?: TrainerPartyEntry[]
+  moneyBase?: number
+  losRange?: number
+  preBattleDialog?: string[]
+  postBattleDialog?: string[]
+  badgeReward?: string
 }
 
 export interface ScriptZone {
@@ -43,6 +56,7 @@ export interface ScriptZone {
   height: number
   scriptId: string
   triggerOnce: boolean
+  autoTrigger?: boolean
 }
 
 export interface GameMap {

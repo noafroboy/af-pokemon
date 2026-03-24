@@ -2,6 +2,8 @@ import type { Player, Direction } from '../entities/Player'
 import type { GameState } from '../types/GameState'
 import type { GameMap, EncounterTableEntry, WarpDefinition } from '../types/MapTypes'
 import type { InputManager } from '../engine/InputManager'
+import type { NPCSystem } from './NPCSystem'
+import type { TrainerNPC } from '../entities/NPC'
 
 const TALL_GRASS_TILE = 3
 
@@ -9,20 +11,43 @@ export type OverworldResult =
   | { type: 'NONE' }
   | { type: 'WARP'; target: { map: string; tileX: number; tileY: number } }
   | { type: 'ENCOUNTER'; encounterTable: EncounterTableEntry[] }
+  | { type: 'DIALOG'; npcId: string; pages: string[][] }
+  | { type: 'TRAINER_SPOTTED'; npc: TrainerNPC }
+  | { type: 'SCRIPT'; scriptId: string }
 
 export class OverworldSystem {
   private input: InputManager
+  private npcSystem: NPCSystem | null = null
 
-  constructor(input: InputManager) {
+  constructor(input: InputManager, npcSystem?: NPCSystem) {
     this.input = input
+    this.npcSystem = npcSystem ?? null
+  }
+
+  setNPCSystem(npcSystem: NPCSystem): void {
+    this.npcSystem = npcSystem
   }
 
   update(player: Player, state: GameState, map: GameMap | null): OverworldResult {
-    this.handleInput(player)
+    // A-press NPC interaction
+    if (this.input.wasJustPressed('z')) {
+      const result = this.checkNPCInteraction(player)
+      if (result.type !== 'NONE') return result
+    }
+
+    this.handleInput(player, map)
     player.updateMovement()
 
     if (player.isMoving() || !map) {
       return { type: 'NONE' }
+    }
+
+    // NPC update for LOS
+    if (this.npcSystem) {
+      const spotted = this.npcSystem.update(16, player, map)
+      if (spotted) {
+        return { type: 'TRAINER_SPOTTED', npc: spotted }
+      }
     }
 
     // Player just finished a tile step
@@ -39,6 +64,14 @@ export class OverworldSystem {
       return { type: 'ENCOUNTER', encounterTable: encounter }
     }
 
+    // Script zones
+    if (this.npcSystem) {
+      const scriptId = this.npcSystem.checkScriptZones(player, map)
+      if (scriptId) {
+        return { type: 'SCRIPT', scriptId }
+      }
+    }
+
     // Process queued movement
     if (player.moveQueue.length > 0) {
       const dir = player.moveQueue.shift()!
@@ -48,7 +81,19 @@ export class OverworldSystem {
     return { type: 'NONE' }
   }
 
-  private handleInput(player: Player): void {
+  checkNPCInteraction(player: Player): OverworldResult {
+    if (!this.npcSystem) return { type: 'NONE' }
+    const result = this.npcSystem.handleInteraction(player)
+    if (result.type === 'DIALOG') {
+      return { type: 'DIALOG', npcId: result.npcId, pages: result.pages }
+    }
+    if (result.type === 'TRAINER_BATTLE') {
+      return { type: 'TRAINER_SPOTTED', npc: result.npc }
+    }
+    return { type: 'NONE' }
+  }
+
+  private handleInput(player: Player, map: GameMap | null): void {
     if (this.input.wasJustPressed('ArrowUp')) player.enqueueDirection('north')
     else if (this.input.wasJustPressed('ArrowDown')) player.enqueueDirection('south')
     else if (this.input.wasJustPressed('ArrowLeft')) player.enqueueDirection('west')
@@ -61,6 +106,7 @@ export class OverworldSystem {
       else if (this.input.isPressed('ArrowLeft')) player.enqueueDirection('west')
       else if (this.input.isPressed('ArrowRight')) player.enqueueDirection('east')
     }
+    void map
   }
 
   private tryMove(player: Player, dir: Direction, map: GameMap): void {
@@ -75,6 +121,12 @@ export class OverworldSystem {
     const collision = map.layers.collision[idx]
 
     if (collision) {
+      player.facing = dir
+      return
+    }
+
+    // NPC collision
+    if (this.npcSystem?.isCollision(nx, ny)) {
       player.facing = dir
       return
     }
