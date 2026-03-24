@@ -1,0 +1,253 @@
+{
+  "approach": "A",
+  "approach_rationale": "This is a greenfield bootstrap of ~35 files. Conservative approach avoids gold-plating unspecified details (tileset art, full save UI) while delivering every required feature. Ideal approach would add real sprite sheets, a complete save/load screen, and full E2E coverage but would triple scope.",
+
+  "files_to_modify": [],
+
+  "files_to_create": [
+    "package.json",
+    "tsconfig.json",
+    "tailwind.config.ts",
+    "next.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "app/layout.tsx",
+    "app/globals.css",
+    "app/page.tsx",
+    "src/game/types/GameState.ts",
+    "src/game/types/PokemonTypes.ts",
+    "src/game/types/BattleTypes.ts",
+    "src/game/types/MapTypes.ts",
+    "src/game/data/types.ts",
+    "src/game/data/pokemon.ts",
+    "src/game/data/moves.ts",
+    "src/game/data/items.ts",
+    "src/game/data/maps/pallet-town.json",
+    "src/game/data/maps/route-1.json",
+    "src/game/entities/Player.ts",
+    "src/game/entities/PokemonInstance.ts",
+    "src/game/engine/AssetLoader.ts",
+    "src/game/engine/Camera.ts",
+    "src/game/engine/InputManager.ts",
+    "src/game/engine/SaveSystem.ts",
+    "src/game/engine/GameEngine.ts",
+    "src/game/systems/OverworldSystem.ts",
+    "src/game/systems/EncounterSystem.ts",
+    "src/game/systems/BattleSystem.ts",
+    "src/game/renderers/OverworldRenderer.ts",
+    "src/game/renderers/BattleRenderer.ts",
+    "src/components/GameCanvas.tsx",
+    "src/components/MobileControls.tsx",
+    "public/assets/sprites/pokemon/front/.gitkeep",
+    "public/assets/sprites/pokemon/back/.gitkeep",
+    "src/game/__tests__/Player.test.ts",
+    "src/game/__tests__/PokemonInstance.test.ts",
+    "src/game/__tests__/EncounterSystem.test.ts",
+    "src/game/__tests__/Camera.test.ts",
+    "src/game/__tests__/InputManager.test.ts",
+    "src/game/__tests__/SaveSystem.test.ts",
+    "e2e/overworld.spec.ts"
+  ],
+
+  "steps": [
+    {
+      "order": 1,
+      "description": "Create branch af/201-project-foundation-playable-overworld-sl/1"
+    },
+    {
+      "order": 2,
+      "description": "Scaffold project config files: package.json, tsconfig.json, tailwind.config.ts, next.config.ts, vitest.config.ts, playwright.config.ts"
+    },
+    {
+      "order": 3,
+      "description": "Create app shell: app/layout.tsx (Press Start 2P font, dark bg), app/globals.css (Tailwind base + canvas reset), app/page.tsx (mounts GameCanvas)"
+    },
+    {
+      "order": 4,
+      "description": "Define all TypeScript type files: GameState.ts, PokemonTypes.ts, BattleTypes.ts, MapTypes.ts — pure interfaces/enums, no logic"
+    },
+    {
+      "order": 5,
+      "description": "Create data files: types.ts (TYPE_CHART), pokemon.ts (#1-20 + #25), moves.ts (~40 moves), items.ts (11 items)"
+    },
+    {
+      "order": 6,
+      "description": "Create map JSON files: pallet-town.json (20×20) and route-1.json (20×30) with terrain/objects/collision layers and encounter configs"
+    },
+    {
+      "order": 7,
+      "description": "Create entity classes: Player.ts, PokemonInstance.ts (with Gen 1 stat formula)"
+    },
+    {
+      "order": 8,
+      "description": "Create engine infrastructure: AssetLoader.ts (with fallback rects), Camera.ts (viewport clamp), InputManager.ts (keyboard + touch hooks), SaveSystem.ts (localStorage)"
+    },
+    {
+      "order": 9,
+      "description": "Create GameEngine.ts: fixed 16.67ms RAF loop, accumulator pattern, phase dispatch"
+    },
+    {
+      "order": 10,
+      "description": "Create OverworldSystem.ts: tile movement, collision, encounter roll, warp detection, NPC interaction"
+    },
+    {
+      "order": 11,
+      "description": "Create EncounterSystem.ts: weighted wild selection, PokemonInstance creation, phase transition to BATTLE stub"
+    },
+    {
+      "order": 12,
+      "description": "Create stubs: BattleSystem.ts (shows dialog, A-press returns to OVERWORLD), BattleRenderer.ts (minimal dialog box)"
+    },
+    {
+      "order": 13,
+      "description": "Create OverworldRenderer.ts: tile-by-tile draw with fallback, player sprite, NPC sprites, camera offset, imageSmoothingEnabled=false"
+    },
+    {
+      "order": 14,
+      "description": "Create React components: GameCanvas.tsx (canvas ref, useEffect mounts engine, 3× scale), MobileControls.tsx (touch d-pad)"
+    },
+    {
+      "order": 15,
+      "description": "Create .gitkeep files for sprite directories"
+    },
+    {
+      "order": 16,
+      "description": "Write Vitest unit tests for Player, PokemonInstance, EncounterSystem, Camera, InputManager, SaveSystem"
+    },
+    {
+      "order": 17,
+      "description": "Write Playwright E2E test: canvas renders at 480×432, arrow key input moves player"
+    },
+    {
+      "order": 18,
+      "description": "Run npm install, npm test — fix any failures"
+    },
+    {
+      "order": 19,
+      "description": "Commit all files with descriptive message"
+    },
+    {
+      "order": 20,
+      "description": "Write .af/tasks/201/pr-body.md and push"
+    }
+  ],
+
+  "expected_tests": [
+    {
+      "file": "src/game/__tests__/Player.test.ts",
+      "cases": [
+        "Player initializes with correct default values",
+        "enqueueMove adds direction to queue",
+        "pixelOffset decrements toward 0 each tick",
+        "tileX/tileY updates when move completes",
+        "facing updates on direction change",
+        "walkFrame cycles 0→1→2→0 during movement"
+      ]
+    },
+    {
+      "file": "src/game/__tests__/PokemonInstance.test.ts",
+      "cases": [
+        "createPokemonInstance returns correct species ID",
+        "HP is calculated with Gen 1 formula at level 5",
+        "HP is calculated at level 50 for Pikachu",
+        "Stats (Attack/Defense/Speed/Special) use Gen 1 formula",
+        "IVs are in range 0–15",
+        "Starting moves match learnset for level",
+        "UUID is unique across two instances"
+      ]
+    },
+    {
+      "file": "src/game/__tests__/EncounterSystem.test.ts",
+      "cases": [
+        "selectWildPokemon returns species from encounter table",
+        "Selected level is within min/max range",
+        "Weighted selection favors higher-weight entries",
+        "PokemonInstance is created for selected species"
+      ]
+    },
+    {
+      "file": "src/game/__tests__/Camera.test.ts",
+      "cases": [
+        "Camera screenX/screenY is 0,0 when player at viewport center",
+        "Camera clamps to left/top edge of map",
+        "Camera clamps to right/bottom edge of map",
+        "worldToScreen converts world coordinate correctly"
+      ]
+    },
+    {
+      "file": "src/game/__tests__/InputManager.test.ts",
+      "cases": [
+        "isPressed returns false for unpressed key",
+        "isPressed returns true after keydown event",
+        "isPressed returns false after keyup event",
+        "wasJustPressed returns true only on first frame after keydown",
+        "heldFrames increments each update while key is held"
+      ]
+    },
+    {
+      "file": "src/game/__tests__/SaveSystem.test.ts",
+      "cases": [
+        "saveGame stores slot to localStorage",
+        "loadGame retrieves slot from localStorage",
+        "loadGame returns null for empty slot",
+        "hasSave returns false before first save",
+        "hasSave returns true after save"
+      ]
+    },
+    {
+      "file": "e2e/overworld.spec.ts",
+      "cases": [
+        "Game canvas is visible at 480×432",
+        "Canvas has data-testid='game-canvas'",
+        "Page title contains POKÉBROWSER"
+      ]
+    }
+  ],
+
+  "risk_areas": [
+    {
+      "area": "Data file size",
+      "risk": "pokemon.ts and moves.ts will exceed 150-line guideline — they are pure data tables, not components, so this is an acceptable exception. Noted in plan.md.",
+      "mitigation": "Split species data into groups if needed; keep logic-free"
+    },
+    {
+      "area": "Canvas in jsdom",
+      "risk": "Vitest/jsdom does not implement 2D canvas rendering; getContext returns null",
+      "mitigation": "Mock CanvasRenderingContext2D in test setup; test pure logic only (no rendering tests)"
+    },
+    {
+      "area": "requestAnimationFrame in jsdom",
+      "risk": "jsdom RAF does not run; GameEngine cannot be instantiated in unit tests",
+      "mitigation": "Unit tests import individual systems/entities directly, not GameEngine"
+    },
+    {
+      "area": "Google Fonts in offline/CI",
+      "risk": "Press Start 2P font may fail to load in restricted network environments",
+      "mitigation": "Font load failure is non-fatal; game renders with system fallback; preload link uses crossorigin=anonymous"
+    },
+    {
+      "area": "SaveSystem.ts not in task file list",
+      "risk": "GameEngine.ts references SaveSystem but the file is not in the explicit files list",
+      "mitigation": "Create SaveSystem.ts as required infrastructure; it is implied by GameEngine spec"
+    },
+    {
+      "area": "BattleSystem.ts not in task file list",
+      "risk": "GameEngine dispatches to BattleSystem based on GamePhase but the file is not listed",
+      "mitigation": "Create minimal BattleSystem stub; task says 'stub battle: shows dialog then returns to OVERWORLD'"
+    },
+    {
+      "area": "Tileset PNG absent",
+      "risk": "No actual tileset image is provided; OverworldRenderer must function without it",
+      "mitigation": "AssetLoader.drawFallback() paints colored rects; all renders check for missing assets first"
+    },
+    {
+      "area": "TYPE_CHART Gen 1 quirks",
+      "risk": "Ghost→Psychic = 0 and Bug→Psychic = 0.5 are Gen 1 bugs, not widely documented",
+      "mitigation": "Hardcode these quirk cells explicitly in the 18×18 matrix with inline comments"
+    }
+  ],
+
+  "persistence_strategy": "localStorage via SaveSystem.ts — save slots serialized as JSON under key 'pokebrowser_save_{slot}'. Map data is static JSON bundled with the app (no runtime DB). No server-side storage needed for this task.",
+
+  "error_handling_approach": "Three-tier approach: (1) AssetLoader wraps each Image.onload in try/catch and calls drawFallback on failure; (2) GameEngine wraps update() and render() in try/catch, logs errors, and displays error overlay on canvas if loop crashes; (3) React GameCanvas component catches engine initialization errors with an error state that shows a styled message."
+}
