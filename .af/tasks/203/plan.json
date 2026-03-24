@@ -1,0 +1,154 @@
+{
+  "task": "Menus, Party Management, Inventory + Save System",
+  "approach": "Conservative — minimal changes to existing code; new files for new features; barrel exports for renderer splitting",
+
+  "files_to_create": [
+    {
+      "path": "src/game/systems/SaveSystem.ts",
+      "description": "New save system with 1|2|3 slots, SCHEMA_VERSION=1, SAVE_KEY='pokebrowser_save_v1', useStorageWarning React hook, save/load/listSlots/deleteSlot/isAvailable/autoSave. Distinct from existing engine/SaveSystem.ts (different storage key, richer API).",
+      "estimated_lines": 110
+    },
+    {
+      "path": "src/game/systems/InventorySystem.ts",
+      "description": "useItem(itemId, target, context), addItem, removeItem, getItemCount. Handles Potion/SuperPotion/FullRestore/Antidote/ParalyzHeal/FullHeal/Revive/Pokeball item effects.",
+      "estimated_lines": 130
+    },
+    {
+      "path": "src/game/renderers/MenuRenderer.ts",
+      "description": "renderStartMenu (slide-in from right, 5 items), renderSaveSlotScreen (3 slots), renderOptionsScreen, renderBadgeCase (2×4 grid). Uses Press Start 2P 8px font matching existing renderers.",
+      "estimated_lines": 170
+    },
+    {
+      "path": "src/game/renderers/ui/PartyRenderer.ts",
+      "description": "renderPartyScreen: 6 portrait slots, HP bars color-coded green/yellow/red, rearrange mode support.",
+      "estimated_lines": 100
+    },
+    {
+      "path": "src/game/renderers/ui/SummaryRenderer.ts",
+      "description": "renderPokemonSummary: 64×64 sprite, name/level/types, HP bar, 4 moves with PP, base stats, OT/location.",
+      "estimated_lines": 130
+    },
+    {
+      "path": "src/game/renderers/ui/BagRenderer.ts",
+      "description": "renderBagScreen: category tabs, scrollable item list, USE/GIVE/TOSS/CANCEL popup, empty state.",
+      "estimated_lines": 110
+    },
+    {
+      "path": "src/game/renderers/ui/PCRenderer.ts",
+      "description": "renderPCScreen (6×5 grid), renderSavingAnimation (animated dots), renderToast (non-blocking message with alpha).",
+      "estimated_lines": 90
+    },
+    {
+      "path": "src/game/renderers/UIRenderer.ts",
+      "description": "Barrel re-export file: re-exports all rendering functions from ui/ sub-renderers. Keeps import surface clean.",
+      "estimated_lines": 15
+    },
+    {
+      "path": "tests/save-system.test.ts",
+      "description": "Vitest tests: round-trip save/load, slot independence, version check returns null, isAvailable false mock, autoSave calls save with correct slot. Located in tests/ (vitest config excludes e2e/** not tests/**).",
+      "estimated_lines": 110
+    },
+    {
+      "path": ".af/tasks/203/plan.json",
+      "description": "This file.",
+      "estimated_lines": 0
+    },
+    {
+      "path": ".af/tasks/203/plan.md",
+      "description": "Human-readable plan.",
+      "estimated_lines": 0
+    }
+  ],
+
+  "files_to_modify": [
+    {
+      "path": "src/game/types/GameState.ts",
+      "changes": [
+        "Add Inventory type alias (Record<number, number>)",
+        "Add ItemResult interface",
+        "Add SaveSlotSummary interface",
+        "Add MenuPhase type and MenuState interface",
+        "Add menuState, inventory, partyPokemon, activeSlot fields to GameState",
+        "Update createInitialGameState() to include new fields with defaults"
+      ],
+      "estimated_lines_added": 45
+    },
+    {
+      "path": "src/game/engine/GameEngine.ts",
+      "changes": [
+        "Import MenuRenderer and UIRenderer functions",
+        "Import new SaveSystem (systems/)",
+        "Add menuRenderer/uiRenderer state",
+        "Add MENU phase case in update() — Enter key opens, x closes, arrow keys navigate",
+        "Add MENU case in render() — calls renderStartMenu + active sub-screen",
+        "Add menu action dispatch (POKEMON/ITEM/SAVE/OPTIONS/EXIT)",
+        "Add party rearrange swap logic",
+        "Add item use flow connecting to InventorySystem"
+      ],
+      "estimated_lines_added": 60
+    },
+    {
+      "path": "app/page.tsx",
+      "changes": [
+        "Import useStorageWarning hook from new SaveSystem",
+        "Render dismissible HTML overlay div when !available"
+      ],
+      "estimated_lines_added": 20
+    }
+  ],
+
+  "steps": [
+    "1. Create branch af/203-menus-party-management-inventory-save-sy/1",
+    "2. Extend src/game/types/GameState.ts with new type definitions",
+    "3. Create src/game/systems/InventorySystem.ts",
+    "4. Create src/game/systems/SaveSystem.ts with useStorageWarning hook",
+    "5. Create src/game/renderers/ui/PartyRenderer.ts",
+    "6. Create src/game/renderers/ui/SummaryRenderer.ts",
+    "7. Create src/game/renderers/ui/BagRenderer.ts",
+    "8. Create src/game/renderers/ui/PCRenderer.ts",
+    "9. Create src/game/renderers/UIRenderer.ts (barrel)",
+    "10. Create src/game/renderers/MenuRenderer.ts",
+    "11. Update src/game/engine/GameEngine.ts — add MENU phase",
+    "12. Update app/page.tsx — add storage warning overlay",
+    "13. Write tests/save-system.test.ts",
+    "14. Run npm test — verify all tests pass",
+    "15. Commit and push",
+    "16. Write .af/tasks/203/pr-body.md, commit and push"
+  ],
+
+  "expected_tests": [
+    "save/load round-trip: save GameState, load it, verify all fields match",
+    "slot independence: slot 1 and slot 2 data are independent",
+    "version mismatch: loading save with old schemaVersion returns null",
+    "isAvailable() returns false when localStorage.setItem throws",
+    "autoSave() calls save() with the active slot number",
+    "useItem Potion: +20 HP capped at maxHp, fails if already full or fainted",
+    "useItem Revive: fainted target revived at floor(maxHp/2)",
+    "useItem Pokeball: only valid in battle context, returns CATCH_ATTEMPT",
+    "addItem: immutably adds quantity to inventory",
+    "removeItem: throws if insufficient quantity"
+  ],
+
+  "risk_areas": [
+    "GameEngine.ts already exceeds 200 lines — menu additions will push it further. Plan: keep menu phase code compact, extract menu navigation to small helper function.",
+    "UIRenderer functions individually are large — mitigated by splitting into ui/ sub-files under 150 lines each.",
+    "The useStorageWarning hook imports React — verify the file compiles as a React module (add 'use client' comment if needed for Next.js).",
+    "New SaveSystem (systems/) uses SAVE_KEY='pokebrowser_save_v1' with slots 1|2|3, while existing SaveSystem (engine/) uses 'pokebrowser_save_0/1/2' with slots 0|1|2. They are completely separate; existing engine/ SaveSystem is NOT modified.",
+    "tests/ directory: vitest.config.ts excludes 'e2e/**' not 'tests/**', so tests/save-system.test.ts will be picked up by vitest. Playwright config may also scan tests/ — name the test file clearly as .test.ts (not .spec.ts) which is the vitest pattern."
+  ],
+
+  "persistence_strategy": {
+    "mechanism": "localStorage",
+    "key": "pokebrowser_save_v1",
+    "schema_version": 1,
+    "fallback": "isAvailable() returns false; game continues playable; useStorageWarning displays message",
+    "quota_handling": "QuotaExceededError sets module-level saveAvailable=false with user-visible message"
+  },
+
+  "error_handling_approach": {
+    "save_errors": "QuotaExceededError and access errors caught; saveAvailable flag set false; useStorageWarning hook surfaces message",
+    "load_errors": "JSON parse errors and schema version mismatch return null gracefully",
+    "item_errors": "useItem returns {success: false, message: 'reason'} — never throws to calling code",
+    "inventory_errors": "removeItem throws ItemInsufficientError for calling code to handle"
+  }
+}
