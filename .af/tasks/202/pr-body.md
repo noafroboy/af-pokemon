@@ -30,6 +30,7 @@
 | `src/game/systems/BattleSystem.ts` | Full rewrite with action/move menu input handling |
 | `src/game/systems/EncounterSystem.ts` | Real BattleState initialization (playerPokemon, battlePhase, sleepTurns) |
 | `src/game/renderers/BattleRenderer.ts` | Full rewrite with phase-aware rendering and HP animation |
+| `src/game/engine/GameEngine.ts` | Encounter transitions now use encounterFlash (TransitionRenderer); ENCOUNTER result triggers TRANSITION phase before BATTLE |
 
 ## Test plan
 
