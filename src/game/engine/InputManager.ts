@@ -2,6 +2,21 @@ export type GameKey =
   | 'ArrowUp' | 'ArrowDown' | 'ArrowLeft' | 'ArrowRight'
   | 'z' | 'x' | 'Enter' | 'Escape'
 
+export type TouchButtonId =
+  | 'up' | 'down' | 'left' | 'right'
+  | 'a' | 'b' | 'start' | 'select'
+
+const TOUCH_TO_KEY: Record<TouchButtonId, GameKey> = {
+  up: 'ArrowUp',
+  down: 'ArrowDown',
+  left: 'ArrowLeft',
+  right: 'ArrowRight',
+  a: 'z',
+  b: 'x',
+  start: 'Enter',
+  select: 'Escape',
+}
+
 const ALLOWED_KEYS = new Set<string>([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
   'z', 'Z', 'x', 'X', 'Enter', 'Escape',
@@ -22,8 +37,21 @@ function normalizeKey(key: string): GameKey | null {
 }
 
 export class InputManager {
+  private static _instance: InputManager | null = null
+
+  static getInstance(): InputManager {
+    if (!InputManager._instance) {
+      InputManager._instance = new InputManager()
+    }
+    return InputManager._instance
+  }
+
+  /** Only for use in tests — resets the singleton so each test gets a clean state */
+  static _resetForTest(): void {
+    InputManager._instance = null
+  }
+
   private states: Map<GameKey, KeyState> = new Map()
-  private touchButtonMap: Map<string, GameKey> = new Map()
   private boundKeyDown: (e: KeyboardEvent) => void
   private boundKeyUp: (e: KeyboardEvent) => void
   private onFirstGestureCb: (() => void) | null = null
@@ -78,8 +106,18 @@ export class InputManager {
     target.removeEventListener('keyup', this.boundKeyUp as EventListener)
   }
 
-  registerTouchButton(elementId: string, key: GameKey): void {
-    this.touchButtonMap.set(elementId, key)
+  /** Maps a virtual touch button to a game key press or release */
+  registerTouchButton(buttonId: TouchButtonId, pressed: boolean): void {
+    const key = TOUCH_TO_KEY[buttonId]
+    if (pressed) {
+      this.simulateKeyDown(key)
+      if (!this.firstGestureFired && this.onFirstGestureCb) {
+        this.firstGestureFired = true
+        this.onFirstGestureCb()
+      }
+    } else {
+      this.simulateKeyUp(key)
+    }
   }
 
   simulateKeyDown(key: GameKey): void {

@@ -1,74 +1,138 @@
 'use client'
+import { useState } from 'react'
+import { InputManager } from '@/game/engine/InputManager'
+import type { TouchButtonId } from '@/game/engine/InputManager'
 
-import { useEffect, type RefObject } from 'react'
-import type { GameEngine } from '@/game/engine/GameEngine'
-import type { GameKey } from '@/game/engine/InputManager'
+type ActiveMap = Partial<Record<TouchButtonId, boolean>>
 
-interface Props {
-  engineRef: RefObject<GameEngine | null>
-}
+const dpadStyle = (active: boolean): React.CSSProperties => ({
+  width: 52,
+  height: 52,
+  backgroundColor: active ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.4)',
+  borderRadius: 8,
+  color: 'white',
+  fontSize: 20,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  touchAction: 'none',
+  userSelect: 'none',
+  border: 'none',
+  cursor: 'default',
+})
 
-const DPAD_BUTTONS: { label: string; key: GameKey; className: string }[] = [
-  { label: '▲', key: 'ArrowUp', className: 'col-start-2 row-start-1' },
-  { label: '◄', key: 'ArrowLeft', className: 'col-start-1 row-start-2' },
-  { label: '►', key: 'ArrowRight', className: 'col-start-3 row-start-2' },
-  { label: '▼', key: 'ArrowDown', className: 'col-start-2 row-start-3' },
-]
+export default function MobileControls() {
+  const [active, setActive] = useState<ActiveMap>({})
 
-const ACTION_BUTTONS: { label: string; key: GameKey }[] = [
-  { label: 'A', key: 'z' },
-  { label: 'B', key: 'x' },
-]
-
-export default function MobileControls({ engineRef }: Props) {
-  useEffect(() => {
-    const input = engineRef.current?.input
-    if (!input) return
-
-    DPAD_BUTTONS.forEach(btn => input.registerTouchButton(btn.key, btn.key))
-    ACTION_BUTTONS.forEach(btn => input.registerTouchButton(btn.key, btn.key))
-  }, [engineRef])
-
-  const handlePress = (key: GameKey) => {
-    engineRef.current?.input.simulateKeyDown(key)
+  const press = (id: TouchButtonId, e: React.PointerEvent) => {
+    e.preventDefault()
+    InputManager.getInstance().registerTouchButton(id, true)
+    setActive(prev => ({ ...prev, [id]: true }))
   }
 
-  const handleRelease = (key: GameKey) => {
-    engineRef.current?.input.simulateKeyUp(key)
+  const release = (id: TouchButtonId) => {
+    InputManager.getInstance().registerTouchButton(id, false)
+    setActive(prev => ({ ...prev, [id]: false }))
   }
+
+  const btnProps = (id: TouchButtonId) => ({
+    onPointerDown: (e: React.PointerEvent) => press(id, e),
+    onPointerUp: () => release(id),
+    onPointerCancel: () => release(id),
+    onPointerLeave: () => release(id),
+  })
 
   return (
-    <div className="flex justify-between w-full mt-2 md:hidden px-4">
-      {/* D-Pad */}
-      <div className="grid grid-cols-3 grid-rows-3 gap-1">
-        {DPAD_BUTTONS.map(btn => (
-          <button
-            key={btn.key}
-            className={`${btn.className} w-10 h-10 bg-[#566c86] text-white rounded text-sm font-bold active:bg-[#3a4a60] select-none`}
-            onPointerDown={() => handlePress(btn.key)}
-            onPointerUp={() => handleRelease(btn.key)}
-            onPointerLeave={() => handleRelease(btn.key)}
-            aria-label={btn.key}
-          >
-            {btn.label}
-          </button>
-        ))}
+    <div
+      data-testid="mobile-controls"
+      className="block md:hidden w-full h-full flex items-end justify-between px-4 pb-2"
+    >
+      {/* D-Pad bottom-left */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 52px)',
+          gridTemplateRows: 'repeat(3, 52px)',
+          gap: 4,
+        }}
+      >
+        <button
+          data-testid="dpad-up"
+          style={{ ...dpadStyle(!!active.up), gridColumn: 2, gridRow: 1 }}
+          {...btnProps('up')}
+        >▲</button>
+        <button
+          data-testid="dpad-left"
+          style={{ ...dpadStyle(!!active.left), gridColumn: 1, gridRow: 2 }}
+          {...btnProps('left')}
+        >◄</button>
+        <div style={{ gridColumn: 2, gridRow: 2, width: 52, height: 52,
+          backgroundColor: 'rgba(0,0,0,0.15)', borderRadius: 8 }} />
+        <button
+          data-testid="dpad-right"
+          style={{ ...dpadStyle(!!active.right), gridColumn: 3, gridRow: 2 }}
+          {...btnProps('right')}
+        >►</button>
+        <button
+          data-testid="dpad-down"
+          style={{ ...dpadStyle(!!active.down), gridColumn: 2, gridRow: 3 }}
+          {...btnProps('down')}
+        >▼</button>
       </div>
 
-      {/* Action buttons */}
-      <div className="flex gap-2 items-end pb-2">
-        {ACTION_BUTTONS.map(btn => (
+      {/* START / SELECT — center-bottom */}
+      <div className="flex flex-col items-center justify-end gap-2 pb-2">
+        <div className="flex gap-2">
           <button
-            key={btn.key}
-            className="w-12 h-12 rounded-full bg-[#cc4444] text-white font-pixel text-xs active:bg-[#aa2222] select-none"
-            onPointerDown={() => handlePress(btn.key)}
-            onPointerUp={() => handleRelease(btn.key)}
-            onPointerLeave={() => handleRelease(btn.key)}
-            aria-label={btn.label}
-          >
-            {btn.label}
-          </button>
-        ))}
+            data-testid="btn-select"
+            style={{
+              width: 50, height: 24,
+              backgroundColor: active.select ? 'rgba(60,60,60,0.9)' : 'rgba(100,100,100,0.7)',
+              borderRadius: 6, color: 'white', fontSize: 6,
+              fontFamily: '"Press Start 2P", monospace',
+              border: 'none', cursor: 'default', touchAction: 'none',
+            }}
+            {...btnProps('select')}
+          >SELECT</button>
+          <button
+            data-testid="btn-start"
+            style={{
+              width: 60, height: 24,
+              backgroundColor: active.start ? 'rgba(60,60,60,0.9)' : 'rgba(100,100,100,0.7)',
+              borderRadius: 6, color: 'white', fontSize: 6,
+              fontFamily: '"Press Start 2P", monospace',
+              border: 'none', cursor: 'default', touchAction: 'none',
+            }}
+            {...btnProps('start')}
+          >START</button>
+        </div>
+      </div>
+
+      {/* B + A buttons — bottom-right */}
+      <div className="flex gap-3 items-end pb-2">
+        <button
+          data-testid="btn-b"
+          style={{
+            width: 50, height: 50,
+            backgroundColor: active.b ? 'rgba(20,20,140,0.9)' : 'rgba(50,50,200,0.7)',
+            borderRadius: '50%', color: 'white', fontSize: 10,
+            fontFamily: '"Press Start 2P", monospace',
+            border: 'none', cursor: 'default', touchAction: 'none',
+            marginBottom: 12,
+          }}
+          {...btnProps('b')}
+        >B</button>
+        <button
+          data-testid="btn-a"
+          style={{
+            width: 60, height: 60,
+            backgroundColor: active.a ? 'rgba(140,20,20,0.9)' : 'rgba(220,50,50,0.7)',
+            borderRadius: '50%', color: 'white', fontSize: 12,
+            fontFamily: '"Press Start 2P", monospace',
+            border: 'none', cursor: 'default', touchAction: 'none',
+          }}
+          {...btnProps('a')}
+        >A</button>
       </div>
     </div>
   )

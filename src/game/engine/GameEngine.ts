@@ -57,7 +57,7 @@ export class GameEngine {
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx
-    this.input = new InputManager()
+    this.input = InputManager.getInstance()
 
     // Pre-load bundled maps
     setMapCache('pallet-town', palletTown as unknown as GameMap)
