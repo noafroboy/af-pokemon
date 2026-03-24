@@ -1,5 +1,6 @@
 import type { InputManager } from '../engine/InputManager'
 import type { GameState } from '../types/GameState'
+import { AudioManager } from '../engine/AudioManager'
 import type { MenuAnimState } from '../renderers/MenuRenderer'
 import {
   renderStartMenu, renderSaveSlotScreen, renderOptionsScreen, renderBadgeCase,
@@ -73,10 +74,12 @@ export class MenuSystem {
 
   private handleStartMenu(input: InputManager, state: GameState): void {
     void state
-    if (input.wasJustPressed('ArrowUp')) this.cursorIndex = (this.cursorIndex + 4) % 5
-    if (input.wasJustPressed('ArrowDown')) this.cursorIndex = (this.cursorIndex + 1) % 5
+    const audio = AudioManager.getInstance()
+    if (input.wasJustPressed('ArrowUp')) { this.cursorIndex = (this.cursorIndex + 4) % 5; audio.playSFX('menu-select') }
+    if (input.wasJustPressed('ArrowDown')) { this.cursorIndex = (this.cursorIndex + 1) % 5; audio.playSFX('menu-select') }
     if (input.wasJustPressed('x') || input.wasJustPressed('Escape') || input.wasJustPressed('Enter')) { this.close(); return }
     if (input.wasJustPressed('z')) {
+      audio.playSFX('menu-select')
       const choice = MENU_ITEMS[this.cursorIndex]
       if (choice === 'POKEMON') this.activeView = 'POKEMON'
       else if (choice === 'ITEM') { this.activeView = 'ITEM'; this.bagIndex = 0 }

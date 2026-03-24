@@ -26,10 +26,16 @@ export class InputManager {
   private touchButtonMap: Map<string, GameKey> = new Map()
   private boundKeyDown: (e: KeyboardEvent) => void
   private boundKeyUp: (e: KeyboardEvent) => void
+  private onFirstGestureCb: (() => void) | null = null
+  private firstGestureFired = false
 
   constructor() {
     this.boundKeyDown = this.onKeyDown.bind(this)
     this.boundKeyUp = this.onKeyUp.bind(this)
+  }
+
+  setFirstGestureCallback(cb: () => void): void {
+    this.onFirstGestureCb = cb
   }
 
   private getOrCreate(key: GameKey): KeyState {
@@ -48,6 +54,10 @@ export class InputManager {
       state.justPressed = true
     }
     state.pressed = true
+    if (!this.firstGestureFired && this.onFirstGestureCb) {
+      this.firstGestureFired = true
+      this.onFirstGestureCb()
+    }
   }
 
   private onKeyUp(e: KeyboardEvent): void {

@@ -1,0 +1,297 @@
+{
+  "task_id": 205,
+  "task_title": "Audio System — Chiptune Music + SFX + Pokemon Cries",
+  "approach": "B-with-A-risk-management",
+  "approach_summary": "Full spec implementation (Approach B) with conservative risk mitigations: SSR guards on all Web Audio API usage, pure-Node WAV generation (no new runtime deps), file splitting to stay under 150 lines, all AudioManager methods wrapped in try/catch.",
+
+  "files_to_create": [
+    {
+      "path": "src/game/audio/cry-params.ts",
+      "purpose": "CryParams interface (audio-specific, richer than PokemonTypes.CryParams), CRY_PARAMS map for all 21 species, synthesizeCry() Web Audio builder",
+      "estimated_lines": 140
+    },
+    {
+      "path": "src/game/audio/tracks/overworld-tracks.ts",
+      "purpose": "Track definitions: TITLE_THEME, PALLET_TOWN, ROUTE_1, POKEMON_CENTER (looping overworld music)",
+      "estimated_lines": 130
+    },
+    {
+      "path": "src/game/audio/tracks/battle-tracks.ts",
+      "purpose": "Track definitions: WILD_BATTLE, TRAINER_BATTLE, GYM_BATTLE, VICTORY_FANFARE, BADGE_FANFARE (battle + fanfares)",
+      "estimated_lines": 130
+    },
+    {
+      "path": "src/game/audio/chiptune-tracks.ts",
+      "purpose": "Barrel file: re-exports TrackDefinition type and all 9 TRACK_DEFINITIONS from sub-files",
+      "estimated_lines": 25
+    },
+    {
+      "path": "src/game/audio/sfx-sprites.ts",
+      "purpose": "SFX file mapping: 13 SFX IDs to public/assets/sfx/*.wav paths for Howler.js",
+      "estimated_lines": 50
+    },
+    {
+      "path": "src/game/engine/AudioManager.ts",
+      "purpose": "Singleton audio manager: playMusic, stopMusic, playSFX, playCry, volume controls, first-gesture unlock, SSR guard",
+      "estimated_lines": 145
+    },
+    {
+      "path": "scripts/generate-sfx.mjs",
+      "purpose": "Node.js CLI entry: orchestrates WAV file generation, writes 14 files to public/assets/sfx/",
+      "estimated_lines": 80
+    },
+    {
+      "path": "scripts/sfx-synth.mjs",
+      "purpose": "Helper functions: encodeWav(), squareWave(), sawtoothWave(), triangleWave(), noiseWave(), applyEnvelope(), frequencySweep() — pure Node.js PCM synthesis",
+      "estimated_lines": 150
+    },
+    {
+      "path": "tests/audio-manager.test.ts",
+      "purpose": "Unit tests: AudioManager singleton, playMusic/stopMusic with mocked Tone, playSFX no-op before gesture, playCry with mocked AudioContext, volume settings",
+      "estimated_lines": 100
+    },
+    {
+      "path": "tests/audio-cry-params.test.ts",
+      "purpose": "Unit tests: all 21 species have CRY_PARAMS entries, each has required fields, synthesizeCry produces valid AudioBuffer mock",
+      "estimated_lines": 70
+    },
+    {
+      "path": "tests/chiptune-tracks.test.ts",
+      "purpose": "Unit tests: all 9 tracks defined in TRACK_DEFINITIONS, each track has bpm + notes array, notes have correct schema",
+      "estimated_lines": 60
+    }
+  ],
+
+  "files_to_modify": [
+    {
+      "path": "src/game/engine/GameEngine.ts",
+      "changes": [
+        "Import AudioManager",
+        "Add audio.playMusic(map.music) in loadMap()",
+        "Add audio.playMusic('title-theme') at TITLE phase start in start()",
+        "Add audio.playSFX('encounter-flash') + audio.playMusic('wild-battle') when encounter transition begins",
+        "Add audio.playCry(wildPokemon.speciesId) when BATTLE phase sets up",
+        "Add audio.playMusic appropriate track on WARP completion",
+        "Add audio.playSFX('badge-get') when BADGE_CEREMONY phase starts",
+        "Call AudioManager.getInstance().onFirstGesture() via InputManager first-gesture event"
+      ],
+      "estimated_additions": 25
+    },
+    {
+      "path": "src/game/systems/BattleSystem.ts",
+      "changes": [
+        "Import AudioManager",
+        "After processTurn() in handleMoveMenu(), scan events for DAMAGE (effectiveness-based SFX), FAINT, EXP_GAIN, LEVEL_UP, CATCH_ATTEMPT, CATCH_RESULT events and call appropriate playSFX()"
+      ],
+      "estimated_additions": 30
+    },
+    {
+      "path": "src/game/engine/InputManager.ts",
+      "changes": [
+        "Add onFirstGesture callback field",
+        "Trigger it once on first keydown/touchstart",
+        "Expose setFirstGestureCallback(fn) method"
+      ],
+      "estimated_additions": 15
+    },
+    {
+      "path": "src/game/systems/MenuSystem.ts",
+      "changes": [
+        "Import AudioManager",
+        "Call AudioManager.getInstance().playSFX('menu-select') on cursor movement and selection"
+      ],
+      "estimated_additions": 8
+    },
+    {
+      "path": "src/game/systems/DialogSystem.ts",
+      "changes": [
+        "Import AudioManager",
+        "In update() charIndex advancement, call playSFX('text-blip') throttled to 1/100ms via lastBlipTime module variable"
+      ],
+      "estimated_additions": 12
+    },
+    {
+      "path": "package.json",
+      "changes": [
+        "Add 'generate-sfx' script: 'node scripts/generate-sfx.mjs'"
+      ],
+      "estimated_additions": 1
+    }
+  ],
+
+  "steps": [
+    {
+      "step": 1,
+      "title": "Create git branch",
+      "action": "git checkout -b af/205-audio-system-chiptune-music-sfx-pokemon/1"
+    },
+    {
+      "step": 2,
+      "title": "Create public/assets/sfx directory",
+      "action": "mkdir -p public/assets/sfx (placeholder for generated files)"
+    },
+    {
+      "step": 3,
+      "title": "Create src/game/audio/cry-params.ts",
+      "action": "Define AudioCryParams interface, CRY_PARAMS for 21 species, synthesizeCry() function"
+    },
+    {
+      "step": 4,
+      "title": "Create chiptune track sub-files",
+      "action": "Create src/game/audio/tracks/overworld-tracks.ts and battle-tracks.ts with note sequence data"
+    },
+    {
+      "step": 5,
+      "title": "Create src/game/audio/chiptune-tracks.ts",
+      "action": "Barrel file re-exporting TrackDefinition and TRACK_DEFINITIONS"
+    },
+    {
+      "step": 6,
+      "title": "Create src/game/audio/sfx-sprites.ts",
+      "action": "Map 13 SFX IDs to /assets/sfx/*.wav paths"
+    },
+    {
+      "step": 7,
+      "title": "Create src/game/engine/AudioManager.ts",
+      "action": "Singleton with Tone.js music playback, Howler.js SFX, Web Audio cry synthesis, SSR guards, try/catch on all methods"
+    },
+    {
+      "step": 8,
+      "title": "Create scripts/sfx-synth.mjs",
+      "action": "Pure Node.js PCM synthesis helpers and WAV encoder"
+    },
+    {
+      "step": 9,
+      "title": "Create scripts/generate-sfx.mjs",
+      "action": "Main script orchestrating SFX generation, update package.json scripts"
+    },
+    {
+      "step": 10,
+      "title": "Run generate-sfx script",
+      "action": "node scripts/generate-sfx.mjs to generate public/assets/sfx/*.wav files"
+    },
+    {
+      "step": 11,
+      "title": "Modify InputManager.ts",
+      "action": "Add first-gesture callback support"
+    },
+    {
+      "step": 12,
+      "title": "Modify GameEngine.ts",
+      "action": "Add AudioManager integration: music on map load, encounter SFX, battle cry, badge fanfare"
+    },
+    {
+      "step": 13,
+      "title": "Modify BattleSystem.ts",
+      "action": "Add SFX calls after processTurn() event scanning"
+    },
+    {
+      "step": 14,
+      "title": "Modify MenuSystem.ts",
+      "action": "Add menu-select SFX on navigation"
+    },
+    {
+      "step": 15,
+      "title": "Modify DialogSystem.ts",
+      "action": "Add throttled text-blip SFX on char advancement"
+    },
+    {
+      "step": 16,
+      "title": "Write tests",
+      "action": "Create tests for AudioManager, CRY_PARAMS, TRACK_DEFINITIONS"
+    },
+    {
+      "step": 17,
+      "title": "Run tests and typecheck",
+      "action": "npm test && npm run typecheck"
+    }
+  ],
+
+  "expected_tests": [
+    "AudioManager: singleton returns same instance",
+    "AudioManager: playSFX is no-op when audioContextUnlocked=false",
+    "AudioManager: onFirstGesture sets audioContextUnlocked=true",
+    "AudioManager: playMusic does not throw (Tone mocked)",
+    "AudioManager: playCry handles invalid speciesId gracefully",
+    "AudioManager: setMusicVolume clamps between 0-1",
+    "CRY_PARAMS: all 21 species (IDs 1-20, 25) have entries",
+    "CRY_PARAMS: each entry has baseFreq, modFreq, modDepth, duration, waveType, envelope",
+    "synthesizeCry: returns non-null when AudioContext is available",
+    "synthesizeCry: handles null/undefined ctx gracefully",
+    "TRACK_DEFINITIONS: all 9 track IDs present",
+    "TRACK_DEFINITIONS: each track has bpm > 0 and notes.length >= 1",
+    "TRACK_DEFINITIONS: each note has pitch (string|null), duration (string), instrument",
+    "TRACK_DEFINITIONS: loop tracks have at least 32 notes (8 bars × 4 beats)",
+    "SFX_FILES: all 13 SFX IDs map to non-empty file paths"
+  ],
+
+  "risk_areas": [
+    {
+      "risk": "Tone.js SSR crash in Next.js",
+      "mitigation": "Dynamic import inside AudioManager init: typeof window check guards all Tone.js usage; AudioManager.getInstance() returns no-op stub on server"
+    },
+    {
+      "risk": "Howler.js SSR crash",
+      "mitigation": "Same typeof window guard; Howler is only imported client-side"
+    },
+    {
+      "risk": "Existing CryParams type collision",
+      "mitigation": "The audio module defines its own AudioCryParams (exported as CryParams from audio module). Import with alias where both are needed: import type { CryParams as AudioCryParams } from '../audio/cry-params'"
+    },
+    {
+      "risk": "chiptune-tracks.ts size exceeds 150 lines",
+      "mitigation": "Split into sub-files: tracks/overworld-tracks.ts + tracks/battle-tracks.ts, barrel in chiptune-tracks.ts"
+    },
+    {
+      "risk": "generate-sfx.mjs requires node-web-audio-api not installed",
+      "mitigation": "Use pure Node.js Buffer-based PCM synthesis and WAV encoding — no external runtime deps"
+    },
+    {
+      "risk": "AudioManager browser-only APIs in test environment",
+      "mitigation": "Mock Tone.js and Howler.js in tests using vi.mock(); AudioContext mocked in jsdom environment"
+    },
+    {
+      "risk": "GameEngine.ts already 418 lines, adding audio increases it further",
+      "mitigation": "Extract audio integration into a private helper method in GameEngine; keep additions minimal"
+    },
+    {
+      "risk": "Tone.js Part/Transport API changes in v14",
+      "mitigation": "Verify API against installed version; use Tone.Sequence or Tone.Part which are stable in v14.x"
+    }
+  ],
+
+  "persistence_strategy": "Volume settings stored in localStorage as 'audioMusicVolume' (default 0.7) and 'audioSFXVolume' (default 0.8). AudioManager reads these on init. No other audio state needs to survive page refresh (music restarts on page load, which is expected behavior).",
+
+  "error_handling_approach": "All AudioManager public methods wrapped in try/catch with console.warn() — never throw. AudioContextUnlocked flag prevents silent failure before user gesture. Missing SFX files: Howler logs its own error, game continues silently. Tone.js synthesis errors: caught and logged, music stops gracefully.",
+
+  "sfx_file_list": [
+    "menu-select.wav",
+    "text-blip.wav",
+    "encounter-flash.wav",
+    "hit-normal.wav",
+    "hit-super.wav",
+    "hit-not-very.wav",
+    "no-effect.wav",
+    "pokemon-faint.wav",
+    "level-up.wav",
+    "exp-gain.wav",
+    "pokeball-shake.wav",
+    "catch-success.wav",
+    "heal-jingle.wav",
+    "badge-get.wav"
+  ],
+
+  "track_ids": [
+    "title-theme",
+    "pallet-town",
+    "route-1",
+    "wild-battle",
+    "trainer-battle",
+    "gym-battle",
+    "victory-fanfare",
+    "pokemon-center",
+    "badge-fanfare"
+  ],
+
+  "species_in_game": [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,25]
+}
