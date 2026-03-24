@@ -5,6 +5,19 @@ export enum GamePhase {
   DIALOG = 'DIALOG',
   MENU = 'MENU',
   TRANSITION = 'TRANSITION',
+  TRAINER_BATTLE_INTRO = 'TRAINER_BATTLE_INTRO',
+  BADGE_CEREMONY = 'BADGE_CEREMONY',
+}
+
+export interface DialogState {
+  pages: string[][]
+  currentPage: number
+  charIndex: number
+  charTimer: number
+  choiceCursor: number
+  isNameEntry: boolean
+  currentName: string
+  nameEntryFor: 'player' | 'rival' | null
 }
 
 export interface SaveSlotData {
@@ -71,6 +84,10 @@ export interface GameState {
   } | null
   dialogLines: string[]
   dialogIndex: number
+  dialogState?: DialogState
+  trainerBattleNpcId?: string
+  lastPokemonCenter?: { map: string; tileX: number; tileY: number }
+  badgeCeremonyTimer?: number
 }
 
 export function createInitialGameState(): GameState {

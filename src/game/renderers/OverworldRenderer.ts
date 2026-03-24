@@ -1,6 +1,8 @@
 import type { GameMap } from '../types/MapTypes'
 import type { Player } from '../entities/Player'
 import type { Camera } from '../engine/Camera'
+import type { NPCSystem } from '../systems/NPCSystem'
+import { NPC, TrainerNPC } from '../entities/NPC'
 import { drawFallback, getCachedImage, TILE_COLORS } from '../engine/AssetLoader'
 
 const TILE_SIZE = 16
@@ -19,7 +21,8 @@ export class OverworldRenderer {
     map: GameMap,
     player: Player,
     camera: Camera,
-    _interpolation: number
+    _interpolation: number,
+    npcSystem?: NPCSystem
   ): void {
     ctx.imageSmoothingEnabled = false
     const { startX, startY, endX, endY } = camera.getVisibleTileRange()
@@ -27,7 +30,11 @@ export class OverworldRenderer {
     this.drawLayer(ctx, map, map.layers.terrain, camera, startX, startY, endX, endY)
     this.drawLayer(ctx, map, map.layers.objects, camera, startX, startY, endX, endY)
     this.drawPlayer(ctx, player, camera)
-    this.drawNPCs(ctx, map, camera)
+    if (npcSystem) {
+      this.drawNPCInstances(ctx, npcSystem.getNPCs(), camera)
+    } else {
+      this.drawNPCs(ctx, map, camera)
+    }
   }
 
   private drawLayer(
@@ -54,7 +61,6 @@ export class OverworldRenderer {
         const { x: sx, y: sy } = camera.worldToScreen(worldX, worldY)
 
         if (tileset) {
-          // Draw from tileset PNG (16×16 tiles assumed in a row)
           const srcX = (tileIndex - 1) * TILE_SIZE
           ctx.drawImage(tileset, srcX, 0, TILE_SIZE, TILE_SIZE, sx, sy, TILE_SIZE, TILE_SIZE)
         } else {
@@ -124,6 +130,36 @@ export class OverworldRenderer {
     }
   }
 
+  private drawNPCInstances(
+    ctx: CanvasRenderingContext2D,
+    npcs: NPC[],
+    camera: Camera
+  ): void {
+    ctx.imageSmoothingEnabled = false
+    for (const npc of npcs) {
+      const worldX = npc.tileX * TILE_SIZE
+      const worldY = npc.tileY * TILE_SIZE
+      if (!camera.isVisible(worldX, worldY)) continue
+
+      const { x: sx, y: sy } = camera.worldToScreen(worldX, worldY)
+
+      // Defeated trainer faces away (north)
+      const bodyColor = npc instanceof TrainerNPC && npc.defeated ? '#888888' : '#4488CC'
+      ctx.fillStyle = bodyColor
+      ctx.fillRect(sx + 2, sy + 4, 12, 12)
+      ctx.fillStyle = '#FFCC88'
+      ctx.fillRect(sx + 3, sy, 10, 8)
+
+      // Exclamation mark for approaching trainers
+      if (npc instanceof TrainerNPC && npc.approachPhase === 'EXCLAIM') {
+        ctx.fillStyle = '#FF0000'
+        ctx.font = 'bold 8px monospace'
+        ctx.textBaseline = 'bottom'
+        ctx.fillText('!', sx + 6, sy - 2)
+      }
+    }
+  }
+
   private drawNPCs(
     ctx: CanvasRenderingContext2D,
     map: GameMap,
@@ -137,10 +173,8 @@ export class OverworldRenderer {
 
       const { x: sx, y: sy } = camera.worldToScreen(worldX, worldY)
 
-      // NPC body
       ctx.fillStyle = '#4488CC'
       ctx.fillRect(sx + 2, sy + 4, 12, 12)
-      // NPC head
       ctx.fillStyle = '#FFCC88'
       ctx.fillRect(sx + 3, sy, 10, 8)
     }

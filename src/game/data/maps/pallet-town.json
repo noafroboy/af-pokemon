@@ -1217,8 +1217,8 @@
       "tileX": 10,
       "tileY": 0,
       "targetMap": "route-1",
-      "targetTileX": 10,
-      "targetTileY": 28,
+      "targetX": 10,
+      "targetY": 28,
       "direction": "north"
     }
   ],
@@ -1258,6 +1258,26 @@
     }
   ],
   "encounters": null,
-  "scriptZones": [],
+  "scriptZones": [
+    {
+      "id": "MOM_DIALOG_ZONE",
+      "tileX": 7,
+      "tileY": 17,
+      "width": 1,
+      "height": 1,
+      "scriptId": "MOM_DIALOG",
+      "triggerOnce": false
+    },
+    {
+      "id": "STARTER_TABLE_TRIGGER",
+      "tileX": 6,
+      "tileY": 3,
+      "width": 3,
+      "height": 3,
+      "scriptId": "STARTER_TABLE_TRIGGER",
+      "triggerOnce": true,
+      "autoTrigger": true
+    }
+  ],
   "music": "pallettown"
 }
