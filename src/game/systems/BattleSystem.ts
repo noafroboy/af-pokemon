@@ -1,9 +1,10 @@
-import type { BattleState, PlayerAction, AIAction } from '../types/BattleTypes'
+import type { BattleState, PlayerAction, AIAction, BattleEvent } from '../types/BattleTypes'
 import type { GameState } from '../types/GameState'
 import type { InputManager } from '../engine/InputManager'
 import { POKEMON_DATA } from '../data/pokemon'
 import { processTurn } from './battle/BattleSystemCore'
 import { selectAIMove } from './battle/MoveSelection'
+import { AudioManager } from '../engine/AudioManager'
 
 // Re-export standalone functions for external use
 export { processTurn } from './battle/BattleSystemCore'
@@ -94,10 +95,34 @@ export class BattleSystem {
       const aiAction: AIAction = { type: 'FIGHT', moveIndex: aiMoveIdx }
       const events = processTurn(battle, playerAction, aiAction)
       battle.events.push(...events)
+      this.playBattleEventSFX(events)
       battle.battlePhase = battle.battleOver ? 'END' : 'SELECT_ACTION'
       battle.cursorIndex = 0
     }
     return 'CONTINUE'
+  }
+
+  private playBattleEventSFX(events: BattleEvent[]): void {
+    const audio = AudioManager.getInstance()
+    for (const ev of events) {
+      if (ev.type === 'DAMAGE') {
+        if (ev.effectiveness > 1) audio.playSFX('hit-super')
+        else if (ev.effectiveness > 0 && ev.effectiveness < 1) audio.playSFX('hit-not-very')
+        else audio.playSFX('hit-normal')
+      } else if (ev.type === 'IMMUNE') {
+        audio.playSFX('no-effect')
+      } else if (ev.type === 'FAINT') {
+        audio.playSFX('pokemon-faint')
+      } else if (ev.type === 'EXP_GAIN') {
+        audio.playSFX('exp-gain')
+      } else if (ev.type === 'LEVEL_UP') {
+        audio.playSFX('level-up')
+      } else if (ev.type === 'CATCH_ATTEMPT') {
+        for (let i = 0; i < ev.shakeCount; i++) audio.playSFX('pokeball-shake')
+      } else if (ev.type === 'CATCH_RESULT' && ev.success) {
+        audio.playSFX('catch-success')
+      }
+    }
   }
 
   private getSpeciesName(speciesId: number): string {

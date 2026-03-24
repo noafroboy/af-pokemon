@@ -1,3 +1,5 @@
+import { AudioManager } from '../engine/AudioManager'
+
 export type DialogPage = {
   lines: string[]
   choices?: string[]
@@ -82,9 +84,13 @@ export class DialogSystem {
     if (this.charIndex < fullText.length) {
       this.charTimer += dt
       const delay = CHAR_DELAY[this.speed]
+      const prevIndex = this.charIndex
       while (this.charTimer >= delay && this.charIndex < fullText.length) {
         this.charTimer -= delay
         this.charIndex++
+      }
+      if (this.charIndex > prevIndex) {
+        AudioManager.getInstance().playTextBlip()
       }
     }
   }

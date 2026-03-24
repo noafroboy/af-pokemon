@@ -18,6 +18,7 @@ import { renderDialog, renderNameEntry } from '../renderers/DialogRenderer'
 import { encounterFlash } from '../renderers/TransitionRenderer'
 import { setMapCache } from './AssetLoader'
 import { loadGame, getDefaultSaveData } from './SaveSystem'
+import { AudioManager } from './AudioManager'
 
 import palletTown from '../data/maps/pallet-town.json'
 import route1 from '../data/maps/route-1.json'
@@ -51,6 +52,8 @@ export class GameEngine {
   private errorMessage: string | null = null
   private isEncounterTransition = false
   private pendingBattleNpc: string | null = null
+  private lastPhase: GamePhase = GamePhase.TITLE
+  private audio = AudioManager.getInstance()
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx
@@ -87,6 +90,11 @@ export class GameEngine {
     this.battleRenderer = new BattleRenderer()
 
     this.loadMap(this.state.currentMap)
+
+    // Wire up first-gesture callback for audio context unlock
+    this.input.setFirstGestureCallback(() => this.audio.onFirstGesture())
+    // Queue title music — will play on first user interaction
+    this.audio.playMusic('title-theme')
   }
 
   private loadMap(mapId: string): void {
@@ -110,6 +118,14 @@ export class GameEngine {
           tileX: 24,
           tileY: 6,
         }
+        // Heal jingle when entering Pokemon Center
+        if (this.state.phase !== GamePhase.TITLE) {
+          this.audio.playSFX('heal-jingle')
+        }
+      }
+      // Play map music when in overworld (not during title)
+      if (this.state.phase !== GamePhase.TITLE) {
+        this.audio.playMusic(map.music)
       }
     } else {
       console.warn(`GameEngine: map "${mapId}" not found`)
@@ -130,6 +146,7 @@ export class GameEngine {
       this.rafId = null
     }
     this.input.detach(window)
+    this.audio.stopMusic(0)
   }
 
   private loop = (timestamp: number): void => {
@@ -156,6 +173,12 @@ export class GameEngine {
   }
 
   private update(dt: number): void {
+    // Track phase changes for audio triggers
+    if (this.state.phase !== this.lastPhase) {
+      this.onPhaseChange(this.lastPhase, this.state.phase)
+      this.lastPhase = this.state.phase
+    }
+
     // TITLE phase
     if (this.state.phase === GamePhase.TITLE) {
       this.onboardingSystem.update(dt, this.state, this.dialogSystem, this.input)
@@ -242,6 +265,7 @@ export class GameEngine {
         } else if (result.type === 'ENCOUNTER') {
           const battle = this.encounterSystem.startEncounter(result.encounterTable, this.state)
           if (battle) {
+            this.audio.playSFX('encounter-flash')
             this.state.phase = GamePhase.TRANSITION
             this.state.transitionTimer = TRANSITION_FRAMES
             this.state.transitionTarget = null
@@ -323,6 +347,22 @@ export class GameEngine {
 
     this.input.update()
     void dt
+  }
+
+  private onPhaseChange(from: GamePhase, to: GamePhase): void {
+    if (to === GamePhase.BATTLE) {
+      const battle = this.battleSystem.getBattleState()
+      if (battle) {
+        this.audio.playCry(battle.wildPokemon.speciesId)
+        const trackId = this.state.trainerBattleNpcId ? 'trainer-battle' : 'wild-battle'
+        this.audio.playMusic(trackId)
+      }
+    } else if (to === GamePhase.BADGE_CEREMONY) {
+      this.audio.playSFX('badge-get')
+    } else if (to === GamePhase.OVERWORLD && from === GamePhase.DIALOG) {
+      // Returning from onboarding dialog — start map music
+      if (this.currentMap) this.audio.playMusic(this.currentMap.music)
+    }
   }
 
   private render(interpolation: number): void {
