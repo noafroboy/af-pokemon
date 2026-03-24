@@ -1,6 +1,8 @@
 'use client'
 
 import dynamic from 'next/dynamic'
+import { useState } from 'react'
+import { useStorageWarning } from '@/game/systems/SaveSystem'
 
 const GameCanvas = dynamic(() => import('@/components/GameCanvas'), {
   ssr: false,
@@ -13,9 +15,22 @@ const GameCanvas = dynamic(() => import('@/components/GameCanvas'), {
   ),
 })
 
+function StorageWarning() {
+  const { available, message } = useStorageWarning()
+  const [dismissed, setDismissed] = useState(false)
+  if (available || dismissed || !message) return null
+  return (
+    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-[#c44] text-white text-[10px] font-pixel px-3 py-1">
+      <span>{message}</span>
+      <button onClick={() => setDismissed(true)} className="ml-4 underline">Dismiss</button>
+    </div>
+  )
+}
+
 export default function Home() {
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-[#1a1c2c]">
+      <StorageWarning />
       <GameCanvas />
       <footer className="hidden md:block mt-4 text-[#566c86] text-[8px] font-pixel text-center">
         <span>Arrow Keys: Move</span>

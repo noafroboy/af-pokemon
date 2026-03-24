@@ -7,6 +7,7 @@ import { InputManager } from './InputManager'
 import { OverworldSystem } from '../systems/OverworldSystem'
 import { EncounterSystem } from '../systems/EncounterSystem'
 import { BattleSystem } from '../systems/BattleSystem'
+import { MenuSystem } from '../systems/MenuSystem'
 import { OverworldRenderer } from '../renderers/OverworldRenderer'
 import { BattleRenderer } from '../renderers/BattleRenderer'
 import { encounterFlash } from '../renderers/TransitionRenderer'
@@ -28,6 +29,7 @@ export class GameEngine {
   private overworldSystem: OverworldSystem
   private encounterSystem: EncounterSystem
   private battleSystem: BattleSystem
+  private menuSystem: MenuSystem
   private overworldRenderer: OverworldRenderer
   private battleRenderer: BattleRenderer
   private currentMap: GameMap | null = null
@@ -61,6 +63,7 @@ export class GameEngine {
     this.overworldSystem = new OverworldSystem(this.input)
     this.encounterSystem = new EncounterSystem()
     this.battleSystem = new BattleSystem(this.input)
+    this.menuSystem = new MenuSystem()
     this.overworldRenderer = new OverworldRenderer()
     this.battleRenderer = new BattleRenderer()
 
@@ -122,6 +125,22 @@ export class GameEngine {
   }
 
   private update(dt: number): void {
+    // Enter menu from overworld on Enter key
+    if (this.state.phase === GamePhase.OVERWORLD && this.input.wasJustPressed('Enter')) {
+      this.state.phase = GamePhase.MENU
+      this.menuSystem.open()
+    }
+    // Close menu returns to overworld
+    if (this.state.phase === GamePhase.MENU) {
+      this.menuSystem.update(this.input, this.state)
+      if (!this.menuSystem.isOpen()) {
+        this.state.phase = GamePhase.OVERWORLD
+      }
+      this.input.update()
+      void dt
+      return
+    }
+
     switch (this.state.phase) {
       case GamePhase.OVERWORLD: {
         const result = this.overworldSystem.update(this.player, this.state, this.currentMap)
@@ -202,6 +221,13 @@ export class GameEngine {
       }
       case GamePhase.BATTLE:
         this.battleRenderer.render(this.ctx, this.battleSystem.getBattleState(), this.state)
+        break
+      case GamePhase.MENU:
+        if (this.currentMap) {
+          this.camera.update(this.player.tileX, this.player.tileY)
+          this.overworldRenderer.render(this.ctx, this.currentMap, this.player, this.camera, 0)
+        }
+        this.menuSystem.render(this.ctx, this.state)
         break
     }
   }

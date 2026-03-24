@@ -25,12 +25,43 @@ export interface SaveSlot {
   timestamp: number
 }
 
+// New types for menus, inventory, and save system
+export interface InventoryEntry {
+  itemId: number
+  quantity: number
+}
+
+export type Inventory = InventoryEntry[]
+
+export interface SaveSlotSummary {
+  slot: 1 | 2 | 3
+  playerName: string
+  badgeCount: number
+  playtimeSeconds: number
+  savedAt: number
+}
+
+export interface NewSaveSlot {
+  slot: 1 | 2 | 3
+  schemaVersion: number
+  playerName: string
+  badges: boolean[]
+  playtimeSeconds: number
+  savedAt: number
+  gameState: Partial<GameState>
+}
+
+import type { PokemonInstance } from './PokemonTypes'
+
 export interface GameState {
   phase: GamePhase
   currentMap: string
   playerTileX: number
   playerTileY: number
   party: string[]
+  partyPokemon: PokemonInstance[]
+  inventory: Inventory
+  activeSlot: 1 | 2 | 3 | null
   flags: Record<string, boolean | number | string>
   transitionTimer: number
   transitionTarget: {
@@ -49,6 +80,9 @@ export function createInitialGameState(): GameState {
     playerTileX: 10,
     playerTileY: 10,
     party: [],
+    partyPokemon: [],
+    inventory: [],
+    activeSlot: null,
     flags: {},
     transitionTimer: 0,
     transitionTarget: null,
