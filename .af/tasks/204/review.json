@@ -1,0 +1,137 @@
+{
+  "verdict": "fail",
+  "dimensions": [
+    {
+      "name": "Requirements Met",
+      "score": 3,
+      "gaps_to_10": "Script handling is a stub (shows literal 'Script: {id}' text instead of PALLET_SCRIPTS content) breaking: starter selection, Nurse Joy heal, MOM_DIALOG. Brock and gym trainer have wrong species IDs. NORMAL speed is 40ms instead of specified 30ms. Player spawns at (10,10) not (7,17). Rival battle never triggers. Badge ceremony shows only text (no zoom, fanfare, badge case, TM34). Name entry grid is not interactive. Blackout only works for wild battles. Pewter Gym warp targets non-existent 'pewter-city' map."
+    },
+    {
+      "name": "Error Handling",
+      "score": 6,
+      "gaps_to_10": "Blackout during trainer battle (when trainerBattleNpcId is set) hits no blackout check — the allFainted logic only runs in the ELSE branch. Pewter Gym warp silently fails (map not in cache, console.warn only). PP/status not restored in blackout heal. lastPokemonCenter defaults missing for trainer blackout."
+    },
+    {
+      "name": "UX Completeness",
+      "score": 3,
+      "gaps_to_10": "Name entry keyboard grid renders but has zero interactivity (no mouse handler, no arrow key grid navigation — only pre-filled default names can be used). Script zones show script ID string not actual dialog. Badge ceremony shows static 'BADGE GET!' text with no animation. Nurse Joy YES choice does nothing. Rival battle never triggers. '!' bubble lasts only ~4 frames."
+    },
+    {
+      "name": "Code Quality",
+      "score": 6,
+      "gaps_to_10": "Explicit TODO comment left in production path: '// (simplified - keyboard chars handled externally in full impl)'. PALLET_SCRIPTS imported and defined but never used by GameEngine. exclaimFrames countdown uses dt (ms) but initialized to 60 (frame count), causing near-instant disappear. hardcoded dt=16 passed to npcSystem.update instead of actual delta."
+    },
+    {
+      "name": "Test Coverage",
+      "score": 5,
+      "gaps_to_10": "Tests were written to match the (incorrect) NORMAL=40ms implementation instead of spec value 30ms — tests validated wrong behavior. No tests for: script zone dispatch, Nurse Joy heal choice, blackout logic, badge ceremony, starter selection flow, rival counter mapping, name entry grid navigation, warp execution."
+    },
+    {
+      "name": "Security",
+      "score": 9,
+      "gaps_to_10": "No hardcoded secrets found. No user input flows to LLM or DB. Minor: name entry input not sanitized (nameAddChar accepts any char including non-uppercase), but impact is low."
+    }
+  ],
+  "average_score": 5.33,
+  "issues": [
+    {
+      "severity": "P1",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "Script zone handling is a stub — shows literal 'Script: ${result.scriptId}' text instead of resolving PALLET_SCRIPTS content. All script-driven gameplay (Nurse Joy heal YES/NO choice with actual healing, MOM_DIALOG, STARTER_TABLE_TRIGGER with choice menu, STARTER_OBTAINED sequence) is completely non-functional.",
+      "fix_guidance": "Import PALLET_SCRIPTS from pallet-town-scripts.ts. In the SCRIPT handling branch, look up the script by scriptId: `const pages = PALLET_SCRIPTS[result.scriptId]; if (pages) this.dialogSystem.startDialog(pages)`. For scripts with choices (NURSE_JOY_HEAL, STARTER_TABLE_TRIGGER), the onChoice callbacks must be wired to real game logic — inject a callback at dialog start time that checks choiceCursor and triggers healing or starter assignment accordingly.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/data/maps/pewter-gym.json",
+      "description": "Brock's party uses speciesId 1 (Bulbasaur) and speciesId 4 (Charmander) instead of Geodude (74) and Onix (95). The gym trainer also uses speciesId 19 (Rattata) instead of Geodude (speciesId 74) at Lv.10. This directly contradicts the stated requirements.",
+      "fix_guidance": "Change Brock's party to [{speciesId: 74, level: 12}, {speciesId: 95, level: 14}] and the youngster gym trainer's party to [{speciesId: 74, level: 10}]. Verify these speciesIds exist in the game's Pokedex data.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "Blackout logic only fires in the wild-battle ELSE branch (when trainerBattleNpcId is falsy). If all party Pokemon faint during a trainer battle, the code marks the trainer defeated and returns to OVERWORLD — no blackout dialog, no warp to Pokemon Center, no heal, no money loss. Player effectively soft-continues at full health.",
+      "fix_guidance": "After any battle ends (both trainer and wild), check `this.state.partyPokemon.every(p => p.currentHp <= 0)`. If true: show 'You blacked out!' dialog via DialogSystem, then on confirm: warp to lastPokemonCenter (default pallet-town (7,5) if unset), heal all party HP/PP/status to max, deduct Math.floor(state.money / 2) from money. This check must happen before the trainer-defeated or badge-ceremony branches.",
+      "checklist_item": "ux"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "Badge ceremony is a minimal stub showing only static 'BADGE GET!' text. Requirements specify: Boulder Badge zooms in spinning from center (badgeZoom animation), fanfare audio plays, Badge Case shows 1 badge lit and 7 greyed, TM34 is added to inventory. None of these are implemented.",
+      "fix_guidance": "Implement a proper badge ceremony: (1) Call TransitionRenderer.badgeZoom() or equivalent canvas animation for the zoom-in effect. (2) Call AudioManager to play fanfare sound. (3) Render a badge case grid (8 slots) with the newly-earned badge highlighted. (4) Add TM34 to state.items via addItem or equivalent. (5) Set the badge flag in state (e.g., state.badges[badgeIndex] = true).",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/engine/OnboardingSystem.ts",
+      "description": "After onboarding completes, the player is placed at tile (10, 10) not at the required bedroom spawn tile (tileX=7, tileY=17) per the task spec.",
+      "fix_guidance": "Change the DONE phase spawn assignment to: `state.playerTileX = 7; state.playerTileY = 17;` and update the Player instance's tileX/tileY accordingly. Also update the Player reference in GameEngine from OnboardingSystem (currently OnboardingSystem only sets state fields but does not update the player entity).",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/renderers/DialogRenderer.ts",
+      "description": "The name entry screen renders a clickable keyboard grid but provides zero interactivity — no mouse event handler, no arrow-key grid cursor navigation. Players can only confirm the pre-filled default name (RED/BLUE). The task requires 'clicking/pressing grid cells' to type names like 'ASH' and 'GARY'.",
+      "fix_guidance": "Add a selectedGridCol/Row state to DialogSystem for the name entry cursor. In GameEngine's DIALOG phase input handling, map ArrowKeys to move the grid cursor and Enter/z to add the highlighted character (instead of the stub comment). Alternatively wire canvas mousedown events to compute which grid cell was clicked (using KB_COL_W/KB_ROW_H constants) and call nameAddChar with the matching character.",
+      "checklist_item": "ux"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/entities/NPC.ts",
+      "description": "exclaimFrames is initialized to 60 and decremented by dt milliseconds each update. OverworldSystem hardcodes dt=16 for npcSystem.update(). So 60/16 ≈ 4 ticks — the '!' exclamation bubble disappears in ~4 game frames (~66ms), making it nearly invisible. The spec says it stays 60 frames (~1 second at 60fps).",
+      "fix_guidance": "Initialize exclaimFrames to 1000 (milliseconds) to represent ~1 second at real-time dt, OR convert the countdown to use actual frame counts and pass frameCount instead of dt. The simplest fix: `this.exclaimFrames = 1000` so that with dt≈16ms it lasts ~62 frames. Also fix OverworldSystem to pass the actual dt parameter instead of hardcoded 16.",
+      "checklist_item": "ux"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/data/maps/pewter-gym.json",
+      "description": "The gym exit warp targets map 'pewter-city' which is not loaded into the map cache. When the player tries to exit the gym, the warp will fail silently (GameEngine logs console.warn but stays on current map), leaving the player stuck in the gym.",
+      "fix_guidance": "Either create a pewter-city.json map and register it in the map cache, or change the warp targetMap to 'viridian-city' as the task spec explicitly allows ('can use viridian-city as stand-in if no pewter-city.json'): set targetMap: 'viridian-city', targetX: 14, targetY: 10.",
+      "checklist_item": "ux"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/data/scripts/pallet-town-scripts.ts",
+      "description": "STARTER_TABLE_TRIGGER has a no-op onChoice callback. Even if the script was properly dispatched (it is not currently), selecting BULBASAUR/CHARMANDER/SQUIRTLE does nothing: no cry plays, no 'POKEMON was obtained!' dialog, no rival counter-type assignment, no rival battle trigger. The RIVAL_COUNTER export is a dialog array, not the required speciesId mapping.",
+      "fix_guidance": "The onChoice callback cannot be a no-op in the script data. Implement a runtime handler in GameEngine that detects STARTER_TABLE_TRIGGER completion: check choiceCursor (0=Bulbasaur, 1=Charmander, 2=Squirtle), add the starter to state.partyPokemon, play its cry via AudioManager, show STARTER_OBTAINED dialog, assign rival's counter-type (RIVAL_COUNTER map: {0→1, 1→2, 2→0}), then trigger a rival trainer battle using BattleSystem.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/systems/DialogSystem.ts",
+      "description": "CHAR_DELAY for NORMAL speed is 40ms/char but the task spec requires 30ms/char (SLOW=50ms, NORMAL=30ms, FAST=10ms). The tests were written to match the wrong 40ms value instead of the spec, validating incorrect behavior.",
+      "fix_guidance": "Change CHAR_DELAY to: { SLOW: 50, NORMAL: 30, FAST: 10 }. Then update tests/dialog-system.test.ts to verify 30ms threshold for NORMAL (not 40ms) and re-run to ensure they still pass.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P1",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "Nurse Joy heal has no implementation. When the player walks into the nurse-counter script zone and selects YES, the onChoice callback in PALLET_SCRIPTS is a no-op, and the SCRIPT dispatch is a stub. No heal logic (HP/PP/status restore to max), no heal animation, no auto-save triggered.",
+      "fix_guidance": "Wire NURSE_JOY_HEAL script to a real handler: when scriptId === 'NURSE_JOY_HEAL', start the dialog with a custom onChoice callback that: if cursor===0 (YES): sets all partyPokemon.currentHp=maxHp, clears all status conditions, restores all PP to max for each move, calls saveGame(), then shows NURSE_JOY_HEALED dialog. If cursor===1 (NO): close dialog.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P2",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "Explicit stub comment left in production DIALOG phase input handling: '// (simplified - keyboard chars handled externally in full impl)'. This is a code smell signaling incomplete implementation in a shipped feature.",
+      "fix_guidance": "Replace the comment block with actual grid cursor navigation as described in the name entry fix guidance above.",
+      "checklist_item": "architecture"
+    },
+    {
+      "severity": "P2",
+      "file": "src/game/engine/GameEngine.ts",
+      "description": "TRAINER_BATTLE_INTRO phase transitions immediately to battle without showing the trainer's preBattleDialog ('Youngster wants to fight!'). The spec requires dialog before battle starts.",
+      "fix_guidance": "In the TRAINER_BATTLE_INTRO handling, after identifying the NPC, use DialogSystem to show the trainer's preBattleDialog pages first. Only after that dialog is confirmed should the phase transition to TRANSITION/BATTLE.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P2",
+      "file": "src/game/systems/OverworldSystem.ts",
+      "description": "OverworldSystem passes hardcoded dt=16 to npcSystem.update() instead of the actual frame delta received in update(). This prevents proper real-time animation scaling.",
+      "fix_guidance": "Thread the actual dt parameter down from OverworldSystem.update(player, state, map, dt) and pass it to npcSystem.update(dt, player, map).",
+      "checklist_item": "architecture"
+    }
+  ],
+  "summary": "The implementation provides good structural scaffolding — DialogSystem, NPCSystem, NPC/Trainer entities, map JSONs, and tests are all well-organized. Tests pass. However, multiple P1 requirements are unmet: the script dispatch system is a non-functional stub (showing 'Script: id' text), Brock and the gym trainer have wrong Pokemon species IDs, the badge ceremony is a placeholder, blackout only works for wild battles, the name entry keyboard grid has no interactivity, the '!' exclamation bubble disappears in ~4 frames due to a timer unit mismatch, the pewter gym warp targets a non-existent map, and the character crawl speed (40ms) contradicts the spec (30ms). The average dimension score is 5.33/10 (below the 6.0 threshold) and Requirements Met scores 3/10 (below the 7/10 minimum). Verdict: FAIL."
+}
