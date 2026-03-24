@@ -1,115 +1,108 @@
 import type { BattleState } from '../types/BattleTypes'
 import type { GameState } from '../types/GameState'
-import { POKEMON_DATA } from '../data/pokemon'
+import { encounterFlash } from './TransitionRenderer'
+import { drawEnemyPanel, drawPlayerPanel } from './battle/PanelRenderer'
+import type { AnimState } from './battle/PanelRenderer'
+import { drawActionMenu, drawMoveMenu, drawDialogText } from './battle/MenuRenderer'
 
 const VIEWPORT_W = 160
 const VIEWPORT_H = 144
-const DIALOG_H = 48
-const FONT = '6px "Press Start 2P", monospace'
 
 export class BattleRenderer {
-  render(
-    ctx: CanvasRenderingContext2D,
-    battle: BattleState | null,
-    _state: GameState
-  ): void {
+  private anim: AnimState = { playerDisplayHp: 0, wildDisplayHp: 0, playerDisplayExp: 0 }
+  private introProgress = 0
+  private introStartTime = 0
+  private introDone = false
+  private lastRenderTime = 0
+
+  render(ctx: CanvasRenderingContext2D, battle: BattleState | null, _state: GameState): void {
     ctx.imageSmoothingEnabled = false
-
-    // Background
-    ctx.fillStyle = '#c8e8c8'
-    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H - DIALOG_H)
-
-    ctx.fillStyle = '#1a1c2c'
-    ctx.fillRect(0, VIEWPORT_H - DIALOG_H, VIEWPORT_W, DIALOG_H)
+    const now = Date.now()
+    const dt = this.lastRenderTime > 0 ? now - this.lastRenderTime : 0
+    this.lastRenderTime = now
 
     if (!battle) {
-      this.drawText(ctx, 'Loading...', 10, VIEWPORT_H - DIALOG_H + 14)
+      ctx.fillStyle = '#1a1c2c'
+      ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H)
+      ctx.fillStyle = '#f4f4f4'
+      ctx.font = '6px "Press Start 2P", monospace'
+      ctx.textAlign = 'center'
+      ctx.fillText('Loading...', VIEWPORT_W / 2, VIEWPORT_H / 2)
       return
     }
 
-    this.drawWildPokemon(ctx, battle)
-    this.drawDialogBox(ctx, battle)
-  }
+    // Sync display HP toward actual HP
+    this.anim.wildDisplayHp = this.lerp(this.anim.wildDisplayHp, battle.wildPokemon.currentHp, dt, 400)
+    this.anim.playerDisplayHp = this.lerp(this.anim.playerDisplayHp, battle.playerPokemon.currentHp, dt, 400)
 
-  private drawWildPokemon(ctx: CanvasRenderingContext2D, battle: BattleState): void {
-    const species = POKEMON_DATA[battle.wildPokemon.speciesId]
-    const name = species?.name?.toUpperCase() ?? `#${battle.wildPokemon.speciesId}`
-    const level = battle.wildPokemon.level
+    // Draw battle background
+    ctx.fillStyle = '#c8e8c8'
+    ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H - 48)
 
-    // Wild Pokémon placeholder sprite
+    // Enemy sprite placeholder (front)
     ctx.fillStyle = '#666688'
-    ctx.fillRect(88, 20, 40, 40)
+    ctx.fillRect(88, 16, 48, 48)
 
-    // Wild Pokémon info box
-    ctx.fillStyle = '#f0f0f0'
-    ctx.fillRect(4, 12, 80, 32)
-    ctx.strokeStyle = '#333'
-    ctx.lineWidth = 1
-    ctx.strokeRect(4, 12, 80, 32)
+    // Player sprite placeholder (back)
+    ctx.fillStyle = '#886666'
+    ctx.fillRect(16, 56, 48, 40)
 
-    ctx.fillStyle = '#000000'
-    ctx.font = FONT
-    ctx.textAlign = 'left'
-    ctx.fillText(name, 8, 24)
-    ctx.fillText(`Lv${level}`, 8, 36)
+    drawEnemyPanel(ctx, battle, this.anim)
+    drawPlayerPanel(ctx, battle, this.anim)
 
-    // HP bar
-    const hpPercent = battle.wildPokemon.currentHp / battle.wildPokemon.maxHp
-    ctx.fillStyle = '#cccccc'
-    ctx.fillRect(8, 38, 72, 4)
-    ctx.fillStyle = hpPercent > 0.5 ? '#44cc44' : hpPercent > 0.25 ? '#cccc00' : '#cc4444'
-    ctx.fillRect(8, 38, Math.round(72 * hpPercent), 4)
+    this.renderPhase(ctx, battle, now)
+
+    // INTRO phase overlay
+    if (battle.battlePhase === 'INTRO') {
+      this.renderIntro(ctx, battle, now)
+    }
   }
 
-  private drawDialogBox(ctx: CanvasRenderingContext2D, battle: BattleState): void {
-    const y0 = VIEWPORT_H - DIALOG_H
-
-    // Dialog border
-    ctx.strokeStyle = '#f0f0f0'
-    ctx.lineWidth = 2
-    ctx.strokeRect(2, y0 + 2, VIEWPORT_W - 4, DIALOG_H - 4)
-
-    ctx.fillStyle = '#f4f4f4'
-    ctx.font = FONT
-    ctx.textAlign = 'left'
-
-    // Word-wrap message
-    const msg = battle.currentMessage
-    const lines = wrapText(msg, 24)
-    lines.forEach((line, i) => {
-      ctx.fillText(line, 8, y0 + 14 + i * 12)
-    })
-
-    // Blinking A prompt
-    if (battle.awaitingInput) {
-      const frame = Math.floor(Date.now() / 400) % 2
-      if (frame === 0) {
-        ctx.fillText('▶', VIEWPORT_W - 14, VIEWPORT_H - 8)
+  private renderIntro(ctx: CanvasRenderingContext2D, battle: BattleState, now: number): void {
+    if (!this.introDone) {
+      if (this.introStartTime === 0) this.introStartTime = now
+      this.introProgress = Math.min(1, (now - this.introStartTime) / 400)
+      encounterFlash(ctx, this.introProgress)
+      if (this.introProgress >= 1) {
+        this.introDone = true
+        battle.battlePhase = 'SELECT_ACTION'
+        // Initialize display HP
+        this.anim.wildDisplayHp = battle.wildPokemon.currentHp
+        this.anim.playerDisplayHp = battle.playerPokemon.currentHp
+      } else {
+        drawDialogText(ctx, battle.currentMessage, false)
       }
     }
   }
 
-  private drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number): void {
-    ctx.fillStyle = '#f4f4f4'
-    ctx.font = FONT
-    ctx.textAlign = 'left'
-    ctx.fillText(text, x, y)
-  }
-}
-
-function wrapText(text: string, maxChars: number): string[] {
-  const words = text.split(' ')
-  const lines: string[] = []
-  let current = ''
-
-  for (const word of words) {
-    if ((current + ' ' + word).trim().length <= maxChars) {
-      current = (current + ' ' + word).trim()
+  private renderPhase(ctx: CanvasRenderingContext2D, battle: BattleState, _now: number): void {
+    if (battle.battlePhase === 'SELECT_ACTION') {
+      drawDialogText(ctx, 'What will', false)
+      drawActionMenu(ctx, battle.cursorIndex)
+    } else if (battle.battlePhase === 'SELECT_MOVE') {
+      drawMoveMenu(ctx, battle.playerPokemon, battle.cursorIndex)
+    } else if (battle.battlePhase === 'END') {
+      drawDialogText(ctx, battle.currentMessage || 'Battle ended.', battle.awaitingInput)
     } else {
-      if (current) lines.push(current)
-      current = word
+      drawDialogText(ctx, battle.currentMessage, battle.awaitingInput)
     }
   }
-  if (current) lines.push(current)
-  return lines.slice(0, 3)
+
+  private lerp(current: number, target: number, dt: number, duration: number): number {
+    if (duration <= 0 || current === target) return target
+    const speed = Math.abs(target - current) / (duration / dt)
+    if (current < target) return Math.min(target, current + speed)
+    return Math.max(target, current - speed)
+  }
+
+  /** Reset animation state for a new battle */
+  reset(battle: BattleState): void {
+    this.anim.wildDisplayHp = battle.wildPokemon.currentHp
+    this.anim.playerDisplayHp = battle.playerPokemon.currentHp
+    this.anim.playerDisplayExp = battle.playerPokemon.experience
+    this.introProgress = 0
+    this.introStartTime = 0
+    this.introDone = false
+    this.lastRenderTime = 0
+  }
 }
