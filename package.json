@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "generate-sfx": "node scripts/generate-sfx.mjs",
-    "generate-assets": "node scripts/generate-assets.mjs"
+    "generate-assets": "node scripts/generate-assets.mjs",
+    "generate-gym-sprites": "node scripts/generate-gym-sprites.mjs"
   },
   "dependencies": {
     "howler": "^2.2.4",
@@ -38,6 +39,7 @@
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.1",
     "jsdom": "^25.0.0",
+    "pngjs": "^7.0.0",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",

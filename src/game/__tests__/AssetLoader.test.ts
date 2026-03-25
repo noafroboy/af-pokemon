@@ -66,24 +66,33 @@ beforeEach(() => {
 // ─── AssetManifest ─────────────────────────────────────────────────────────
 
 describe('AssetManifest', () => {
-  it('contains all 21 pokemon IDs', () => {
-    expect(AssetManifest.pokemonIds).toHaveLength(21)
+  it('contains all 24 pokemon IDs', () => {
+    expect(AssetManifest.pokemonIds).toHaveLength(24)
     expect(AssetManifest.pokemonIds).toContain(25)   // Pikachu
     expect(AssetManifest.pokemonIds).toContain(1)    // Bulbasaur
     expect(AssetManifest.pokemonIds).toContain(20)   // Raticate
+    expect(AssetManifest.pokemonIds).toContain(74)   // Geodude
+    expect(AssetManifest.pokemonIds).toContain(75)   // Graveler
+    expect(AssetManifest.pokemonIds).toContain(95)   // Onix
   })
 
   it('generates correct front sprite paths', () => {
     const paths = AssetManifest.spriteFront
-    expect(paths).toHaveLength(21)
+    expect(paths).toHaveLength(24)
     expect(paths[0]).toBe('/assets/sprites/pokemon/front/1.png')
     expect(paths).toContain('/assets/sprites/pokemon/front/25.png')
+    expect(paths).toContain('/assets/sprites/pokemon/front/74.png')
+    expect(paths).toContain('/assets/sprites/pokemon/front/75.png')
+    expect(paths).toContain('/assets/sprites/pokemon/front/95.png')
   })
 
   it('generates correct back sprite paths', () => {
     const paths = AssetManifest.spriteBack
-    expect(paths).toHaveLength(21)
+    expect(paths).toHaveLength(24)
     expect(paths[0]).toBe('/assets/sprites/pokemon/back/1.png')
+    expect(paths).toContain('/assets/sprites/pokemon/back/74.png')
+    expect(paths).toContain('/assets/sprites/pokemon/back/75.png')
+    expect(paths).toContain('/assets/sprites/pokemon/back/95.png')
   })
 
   it('has correct tileset paths', () => {
