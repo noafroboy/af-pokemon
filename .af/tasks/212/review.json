@@ -1,0 +1,53 @@
+{
+  "verdict": "pass",
+  "dimensions": [
+    {
+      "name": "Requirements Met",
+      "score": 10,
+      "gaps_to_10": "All five task requirements are fully satisfied: badge map covers all 8 slots, BOULDER→0 works, CASCADE→1 works, Brock's party is Geodude lv.12 + Onix lv.14, both Pokémon have Rock Throw at level 1, and no existing tests break."
+    },
+    {
+      "name": "Error Handling",
+      "score": 8,
+      "gaps_to_10": "The `?? 0` fallback in `BADGE_INDEX_MAP[npcEntity.badgeReward!] ?? 0` silently awards Boulder Badge (slot 0) for any unrecognised badge name. A future developer adding a ninth badge but forgetting to update the map would award the wrong badge with no warning. A console.warn or assertion would surface the bug earlier."
+    },
+    {
+      "name": "UX Completeness",
+      "score": 9,
+      "gaps_to_10": "Brock's Pokémon correctly use Rock Throw, display as Geodude/Onix, and the badge ceremony fires correctly. Minor: Onix's secondary move at lv.9 is Rage (Normal, 20 power) rather than a Rock/Ground move, but this matches the available moves data and the task's fallback instruction ('use whatever Rock/Ground moveIds are defined in moves.ts')."
+    },
+    {
+      "name": "Code Quality",
+      "score": 9,
+      "gaps_to_10": "Clean, idiomatic, follows all existing patterns. Graveler (#75) was added as an evolution-chain stub even though the task didn't request it — minor unasked-for scope, but architecturally correct since Geodude's `evolutions` array references speciesId 75. The exported `BADGE_INDEX_MAP` constant is well-named and self-documenting."
+    },
+    {
+      "name": "Test Coverage",
+      "score": 9,
+      "gaps_to_10": "28 new tests cover all badge→slot mappings, Geodude/Onix species data correctness, and Brock's party composition. One minor test-naming issue: 'unknown badge name returns undefined (not 0)' tests the raw map (correctly returns undefined) but does not test that the engine falls back to 0 via `?? 0`, which could mislead future readers about runtime behaviour."
+    },
+    {
+      "name": "Security",
+      "score": 10,
+      "gaps_to_10": "No security concerns. Changes are purely static game data and a lookup map with no user input, network calls, or secrets involved."
+    }
+  ],
+  "average_score": 9.2,
+  "issues": [
+    {
+      "severity": "P2",
+      "file": "src/game/engine/GamePhaseUpdater.ts",
+      "description": "The `?? 0` fallback silently awards Boulder Badge (slot 0) if an NPC has a badgeReward string not present in BADGE_INDEX_MAP. A future developer who adds a gym but forgets to extend the map would silently award the wrong badge with no diagnostic output.",
+      "fix_guidance": "Add a runtime guard or console.warn: `const badgeIndex = BADGE_INDEX_MAP[npcEntity.badgeReward!]; if (badgeIndex === undefined) { console.warn('Unknown badge reward:', npcEntity.badgeReward); } badges[badgeIndex ?? 0] = true;` — this preserves the safe fallback while surfacing the misconfiguration in dev/test.",
+      "checklist_item": "error_handling"
+    },
+    {
+      "severity": "P2",
+      "file": "tests/badge-award.test.ts",
+      "description": "The test titled 'unknown badge name returns undefined (not 0)' correctly asserts that `BADGE_INDEX_MAP['FAKE_BADGE']` is undefined, but is misleading: the actual engine applies `?? 0`, so at runtime an unknown badge would still set slot 0. A reader of the test might incorrectly believe unknown badges are a no-op.",
+      "fix_guidance": "Either rename the test to clarify it tests the map lookup in isolation ('direct map lookup for unknown key returns undefined'), or add a companion test that simulates the engine logic (`(BADGE_INDEX_MAP['FAKE_BADGE'] ?? 0) === 0`) with a comment explaining the fallback intent.",
+      "checklist_item": "test_quality"
+    }
+  ],
+  "summary": "All five stated requirements are met, all 264 tests pass (28 newly added), and the implementation is clean and idiomatic. The badge name→index map correctly handles all 8 Gen-1 badges including CASCADE→1. Geodude and Onix are added with accurate canonical base stats, Rock Throw in their learnsets, and Brock's party is correctly updated. Two minor P2 issues exist: (1) the `?? 0` fallback in the badge lookup silently absorbs future misconfiguration instead of warning, and (2) one test's name is slightly misleading about engine runtime behaviour vs. raw map lookup. Neither issue affects correctness today. Verdict: pass."
+}
