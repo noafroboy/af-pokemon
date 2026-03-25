@@ -47,6 +47,9 @@ const POKEMON = [
   { id: 19, name: 'Rattata' },
   { id: 20, name: 'Raticate' },
   { id: 25, name: 'Pikachu' },
+  { id: 74, name: 'Geodude' },
+  { id: 75, name: 'Graveler' },
+  { id: 95, name: 'Onix' },
 ]
 
 // ─── Asset manifest (path -> prompt) ───────────────────────────────────────
