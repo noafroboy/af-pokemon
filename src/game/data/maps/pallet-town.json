@@ -1307,6 +1307,15 @@
       "scriptId": "STARTER_TABLE_TRIGGER",
       "triggerOnce": true,
       "autoTrigger": true
+    },
+    {
+      "id": "RIVAL_BATTLE_ZONE",
+      "tileX": 9,
+      "tileY": 4,
+      "width": 3,
+      "height": 2,
+      "scriptId": "RIVAL_BATTLE_TRIGGER",
+      "triggerOnce": false
     }
   ],
   "music": "pallettown"

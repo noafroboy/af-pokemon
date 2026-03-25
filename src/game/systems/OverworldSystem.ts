@@ -117,12 +117,15 @@ export class OverworldSystem {
       return
     }
 
-    const idx = ny * map.width + nx
-    const collision = map.layers.collision[idx]
-
-    if (collision) {
-      player.facing = dir
-      return
+    // Warp tiles may sit on collision cells (doors/cave entrances) — allow movement
+    const isWarpTile = map.warps.some(w => w.tileX === nx && w.tileY === ny)
+    if (!isWarpTile) {
+      const idx = ny * map.width + nx
+      const collision = map.layers.collision[idx]
+      if (collision) {
+        player.facing = dir
+        return
+      }
     }
 
     // NPC collision

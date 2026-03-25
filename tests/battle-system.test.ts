@@ -41,29 +41,29 @@ function aiAction(moveIndex = 0): AIAction {
 }
 
 describe('BattleSystem - status effects', () => {
-  it('Paralysis: Math.random()=0.24 → Pokemon moves (not paralyzed)', () => {
+  it('Paralysis: Math.random()=0.5 → Pokemon moves (not paralyzed)', () => {
     const state = makeBattleState()
     state.playerPokemon.status = StatusCondition.PARALYSIS
     // Make player slower so wild goes first; then player acts
     state.playerPokemon.stats.speed = 1
     state.wildPokemon.stats.speed = 100
 
-    // random < 0.25 → moves (0.24 < 0.25 → not paralyzed per implementation: >= 0.25 → paralyzed)
-    vi.spyOn(Math, 'random').mockReturnValue(0.24)
+    // random >= 0.25 → not paralyzed (25% chance means paralyzed only when < 0.25)
+    vi.spyOn(Math, 'random').mockReturnValue(0.5)
     const events = processTurn(state, fightAction(0), aiAction(0))
 
     const moveUsedEvents = events.filter(e => e.type === 'MOVE_USED' && e.user === 'player')
     expect(moveUsedEvents.length).toBeGreaterThanOrEqual(1)
   })
 
-  it('Paralysis: Math.random()=0.25 → fully paralyzed (cannot move)', () => {
+  it('Paralysis: Math.random()=0.1 → fully paralyzed (cannot move)', () => {
     const state = makeBattleState()
     state.playerPokemon.status = StatusCondition.PARALYSIS
     state.playerPokemon.stats.speed = 1
     state.wildPokemon.stats.speed = 100
 
-    // random >= 0.25 → paralyzed
-    vi.spyOn(Math, 'random').mockReturnValue(0.25)
+    // random < 0.25 → paralyzed (25% chance)
+    vi.spyOn(Math, 'random').mockReturnValue(0.1)
     const events = processTurn(state, fightAction(0), aiAction(0))
 
     const moveUsedByPlayer = events.filter(e => e.type === 'MOVE_USED' && e.user === 'player')

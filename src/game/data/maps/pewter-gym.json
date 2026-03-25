@@ -691,9 +691,9 @@
     {
       "tileX": 7,
       "tileY": 14,
-      "targetMap": "pewter-city",
-      "targetX": 10,
-      "targetY": 5,
+      "targetMap": "viridian-city",
+      "targetX": 14,
+      "targetY": 1,
       "direction": "south"
     }
   ],
