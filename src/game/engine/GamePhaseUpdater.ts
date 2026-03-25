@@ -76,6 +76,7 @@ export function updateGamePhases(
   if (state.phase === GamePhase.DIALOG) {
     dialog.update(dt)
     if (onboarding.isInOnboarding()) {
+      if (input.wasJustPressed('Enter') || input.wasJustPressed('z')) dialog.handleConfirm()
       onboarding.update(dt, state, dialog, input)
     } else {
       if (input.wasJustPressed('Enter') || input.wasJustPressed('z')) dialog.handleConfirm()
