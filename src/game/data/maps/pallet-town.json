@@ -1225,8 +1225,8 @@
   "npcs": [
     {
       "id": "oak",
-      "tileX": 10,
-      "tileY": 8,
+      "tileX": 7,
+      "tileY": 3,
       "facing": "south",
       "spriteId": 1,
       "dialog": [
@@ -1258,7 +1258,7 @@
     },
     {
       "id": "rival",
-      "tileX": 10,
+      "tileX": 11,
       "tileY": 3,
       "facing": "south",
       "spriteId": 5,
