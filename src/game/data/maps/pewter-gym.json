@@ -739,11 +739,11 @@
       "trainerId": "brock",
       "party": [
         {
-          "speciesId": 1,
+          "speciesId": 74,
           "level": 12
         },
         {
-          "speciesId": 4,
+          "speciesId": 95,
           "level": 14
         }
       ],

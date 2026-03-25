@@ -46,6 +46,7 @@ export const MOVES_DATA: Record<number, Move> = {
   84: { id: 84, name: 'Thunder Shock', type: 'Electric', category: 'special', power: 40, accuracy: 100, pp: 30, effect: 'paralysis_10', priority: 0, highCrit: false },
   85: { id: 85, name: 'Thunderbolt', type: 'Electric', category: 'special', power: 90, accuracy: 100, pp: 15, effect: 'paralysis_10', priority: 0, highCrit: false },
   86: { id: 86, name: 'Thunder Wave', type: 'Electric', category: 'status', power: 0, accuracy: 100, pp: 20, effect: 'paralysis', priority: 0, highCrit: false },
+  88: { id: 88, name: 'Rock Throw', type: 'Rock', category: 'physical', power: 50, accuracy: 90, pp: 15, effect: 'none', priority: 0, highCrit: false },
   91: { id: 91, name: 'Dig', type: 'Ground', category: 'physical', power: 80, accuracy: 100, pp: 10, effect: 'two_turn', priority: 0, highCrit: false },
   93: { id: 93, name: 'Confusion', type: 'Psychic', category: 'special', power: 50, accuracy: 100, pp: 25, effect: 'confuse_10', priority: 0, highCrit: false },
   98: { id: 98, name: 'Quick Attack', type: 'Normal', category: 'physical', power: 40, accuracy: 100, pp: 30, effect: 'none', priority: 1, highCrit: false },
