@@ -29,7 +29,7 @@ export interface SaveSlotData {
   badges: number[]
   money: number
   playTime: number
-  flags: Record<string, boolean | number | string>
+  flags: Record<string, unknown>
 }
 
 export interface SaveSlot {
@@ -75,7 +75,7 @@ export interface GameState {
   partyPokemon: PokemonInstance[]
   inventory: Inventory
   activeSlot: 1 | 2 | 3 | null
-  flags: Record<string, boolean | number | string>
+  flags: Record<string, unknown>
   transitionTimer: number
   transitionTarget: {
     map: string

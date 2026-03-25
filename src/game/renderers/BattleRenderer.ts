@@ -9,12 +9,16 @@ import { getPokemonSprite } from '../engine/AssetLoader'
 const VIEWPORT_W = 160
 const VIEWPORT_H = 144
 
+interface LevelUpDisplay { level: number; name: string; showUntil: number }
+
 export class BattleRenderer {
   private anim: AnimState = { playerDisplayHp: 0, wildDisplayHp: 0, playerDisplayExp: 0 }
   private introProgress = 0
   private introStartTime = 0
   private introDone = false
   private lastRenderTime = 0
+  private levelUpDisplay: LevelUpDisplay | null = null
+  private lastEventCount = 0
 
   render(ctx: CanvasRenderingContext2D, battle: BattleState | null, _state: GameState): void {
     ctx.imageSmoothingEnabled = false
@@ -65,12 +69,44 @@ export class BattleRenderer {
     drawEnemyPanel(ctx, battle, this.anim)
     drawPlayerPanel(ctx, battle, this.anim)
 
+    this.checkLevelUpEvents(battle, now)
     this.renderPhase(ctx, battle, now)
 
     // INTRO phase overlay
     if (battle.battlePhase === 'INTRO') {
       this.renderIntro(ctx, battle, now)
     }
+
+    // Level-up overlay: show for 2 seconds after gaining a level
+    if (this.levelUpDisplay && now < this.levelUpDisplay.showUntil) {
+      this.renderLevelUpOverlay(ctx, this.levelUpDisplay)
+    } else if (this.levelUpDisplay && now >= this.levelUpDisplay.showUntil) {
+      this.levelUpDisplay = null
+    }
+  }
+
+  private checkLevelUpEvents(battle: BattleState, now: number): void {
+    const newEvents = battle.events.slice(this.lastEventCount)
+    this.lastEventCount = battle.events.length
+    for (const ev of newEvents) {
+      if (ev.type === 'LEVEL_UP') {
+        const name = battle.playerPokemon.nickname ?? `#${battle.playerPokemon.speciesId}`
+        this.levelUpDisplay = { level: ev.newLevel, name, showUntil: now + 2000 }
+      }
+    }
+  }
+
+  private renderLevelUpOverlay(ctx: CanvasRenderingContext2D, info: LevelUpDisplay): void {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)'
+    ctx.fillRect(20, 52, 120, 36)
+    ctx.strokeStyle = '#f4d000'
+    ctx.lineWidth = 1
+    ctx.strokeRect(20, 52, 120, 36)
+    ctx.fillStyle = '#f4f4f4'
+    ctx.font = '6px "Press Start 2P", monospace'
+    ctx.textAlign = 'center'
+    ctx.fillText(`${info.name} grew`, VIEWPORT_W / 2, 68)
+    ctx.fillText(`to Lv. ${info.level}!`, VIEWPORT_W / 2, 80)
   }
 
   private renderIntro(ctx: CanvasRenderingContext2D, battle: BattleState, now: number): void {
@@ -119,5 +155,7 @@ export class BattleRenderer {
     this.introStartTime = 0
     this.introDone = false
     this.lastRenderTime = 0
+    this.levelUpDisplay = null
+    this.lastEventCount = 0
   }
 }

@@ -1,0 +1,302 @@
+{
+  "approach": "A-Conservative",
+  "approach_rationale": "Implement minimum code changes needed to make all 4 E2E journey tests pass and all polish requirements met. Avoid rewriting working systems; fix specific bugs and add missing seams for testability.",
+
+  "assumption_audit": [
+    "ASSUMED: 'tests/e2e/' is the target dir; playwright.config.ts must be updated from './e2e' to './tests/e2e'",
+    "ASSUMED: 'End key' in name-entry spec means Enter/Z confirm (End key is not a game key — likely a typo for 'when done')",
+    "ASSUMED: Starter selection journey uses pallet-town NPC/script zones already present in the map JSON",
+    "ASSUMED: pre-seeded save states must be written to 'pokebrowser_save_0' (old engine format) because GameEngine.constructor() calls loadGame(0) from engine/SaveSystem.ts",
+    "ASSUMED: 'badge[0]=true' in localStorage means the new save-system slot 1 gameState.flags.badges[0] is true",
+    "ASSUMED: mobile layout check means canvas is fully visible without scrolling at 375×667 — currently app uses dynamic scale so it SHOULD work",
+    "ASSUMED: 'no console errors' means no unhandled promise rejections and no TypeError/ReferenceError in console during tests",
+    "ASSUMED: AssetLoader.test.ts and InputManager.test.ts (test files >200 lines) are in scope for the 200-line check per spec"
+  ],
+
+  "risks": [
+    "GameEngine.ts is 465 lines and must be split — highest refactor risk, touches core game loop",
+    "Save/load integration is split across two incompatible systems; engine reads old format, menu writes new format — tests that inject party Pokemon via localStorage will fail without fixing this",
+    "Journey 1 requires script execution (STARTER_TABLE_TRIGGER) which is currently a stub — needs implementation",
+    "Name entry letter key handling is currently a stub in GameEngine ('simplified - keyboard chars handled externally') — needs implementation",
+    "EncounterSystem hardcodes player Pokemon as Bulbasaur Lv.5 instead of using state.partyPokemon[0] — Journey 2 needs this fixed",
+    "Battle ITEM action (Pokeball throw) is not implemented in BattleSystem.handleActionMenu — Journey 2 needs this",
+    "Canvas-based game has no DOM test IDs for game states; need to expose state via data attributes or window global",
+    "Headless Chromium RAF loop timing may differ; journey tests need robust waits not fixed delays",
+    "pokemon.ts (234 lines) and AssetLoader.ts (217 lines) also exceed 200-line limit"
+  ],
+
+  "files_to_create": [
+    "tests/e2e/new-game-journey.spec.ts",
+    "tests/e2e/wild-catch-journey.spec.ts",
+    "tests/e2e/gym-badge-journey.spec.ts",
+    "tests/e2e/team-management-journey.spec.ts",
+    "tests/e2e/integration-checks.spec.ts",
+    "src/game/engine/GamePhaseUpdater.ts",
+    "src/game/engine/GamePhaseRenderer.ts",
+    "src/game/engine/ScriptHandler.ts",
+    "src/game/data/pokemon-data.ts",
+    "src/game/engine/AssetManifest.ts"
+  ],
+
+  "files_to_modify": [
+    {
+      "path": "playwright.config.ts",
+      "reason": "Change testDir from './e2e' to './tests/e2e' to match required test directory"
+    },
+    {
+      "path": "src/components/GameCanvas.tsx",
+      "reason": "Add data-game-phase, data-map-id, data-party-count attributes to canvas element for E2E test assertions"
+    },
+    {
+      "path": "src/game/engine/GameEngine.ts",
+      "reason": "Split to under 200 lines: extract phase update logic and render logic to separate files; add public state getters; fix name-entry letter key handling; add post-blackout dialog; add frame-time tracker; fix save/load to use new save system"
+    },
+    {
+      "path": "src/game/systems/EncounterSystem.ts",
+      "reason": "Fix: use state.partyPokemon[0] as player Pokemon instead of hardcoded Bulbasaur Lv.5"
+    },
+    {
+      "path": "src/game/systems/BattleSystem.ts",
+      "reason": "Implement ITEM action (Pokeball throw) in handleActionMenu; add POKEMON action stub"
+    },
+    {
+      "path": "src/game/renderers/BattleRenderer.ts",
+      "reason": "Add level-up stat reveal overlay (2s, shows level/stat changes); verify HP lerp is smooth not instant"
+    },
+    {
+      "path": "src/game/renderers/DialogRenderer.ts",
+      "reason": "Add long name truncation with ellipsis for names over 10 characters"
+    },
+    {
+      "path": "src/game/renderers/MenuRenderer.ts",
+      "reason": "Add sinusoidal alpha pulse glow animation for earned badges in renderBadgeCase"
+    },
+    {
+      "path": "src/game/renderers/UIRenderer.ts",
+      "reason": "Add empty state messages for empty bag and empty PC screens"
+    },
+    {
+      "path": "src/game/renderers/TransitionRenderer.ts",
+      "reason": "Verify encounter flash takes exactly 400ms (already time-based at 400ms in BattleRenderer); ensure overworld transition is also consistent"
+    },
+    {
+      "path": "src/game/systems/MenuSystem.ts",
+      "reason": "Wire OPTIONS textSpeed setting to DialogSystem speed; fix save to write to engine-loadable slot 0"
+    },
+    {
+      "path": "src/game/engine/AssetLoader.ts",
+      "reason": "Split to under 200 lines: move AssetManifest constants to AssetManifest.ts; ensure 404 errors produce colored fallback without uncaught promise rejections"
+    },
+    {
+      "path": "src/game/data/pokemon.ts",
+      "reason": "Split to under 200 lines: move learnset data to separate file or compress definitions"
+    }
+  ],
+
+  "steps": [
+    {
+      "step": 1,
+      "title": "Branch setup",
+      "actions": [
+        "git checkout -b af/208-e2e-tests-integration-verification-polis/1"
+      ]
+    },
+    {
+      "step": 2,
+      "title": "Update playwright.config.ts",
+      "actions": [
+        "Change testDir to './tests/e2e'",
+        "Add mobile viewport project for integration checks"
+      ]
+    },
+    {
+      "step": 3,
+      "title": "Fix save/load integration (critical for Journey 2, 3, 4)",
+      "actions": [
+        "Update GameEngine constructor to load from new save system (systems/SaveSystem.ts load(1)) if available, restoring partyPokemon",
+        "Fall back to old engine/SaveSystem.ts slot 0 for backwards compatibility",
+        "Ensure save via menu also writes to engine-readable format"
+      ]
+    },
+    {
+      "step": 4,
+      "title": "Expose game state for E2E testing",
+      "actions": [
+        "Add getPhase(), getMapId(), getPartyCount(), getBadgeCount() public getters to GameEngine",
+        "In GameCanvas.tsx, update canvas data-game-phase, data-map-id, data-party-count attributes each frame via a ref callback or RAF",
+        "Set window.__GAME_DEBUG__ = { phase, mapId, partyCount } for complex queries in page.evaluate()"
+      ]
+    },
+    {
+      "step": 5,
+      "title": "Fix name entry letter key handling",
+      "actions": [
+        "In GameEngine, attach a separate 'keydown' listener that calls dialogSystem.nameAddChar(key) for A-Z chars when dialogSystem.isNameEntry === true",
+        "Handle Backspace to call dialogSystem.nameDeleteChar()",
+        "Map 'End' key (or just Enter/Z) to confirm the name"
+      ]
+    },
+    {
+      "step": 6,
+      "title": "Implement minimal script execution for starter selection",
+      "actions": [
+        "Create src/game/engine/ScriptHandler.ts to handle PALLET_SCRIPTS",
+        "In GameEngine, when result.type === 'SCRIPT', dispatch to ScriptHandler instead of showing stub dialog",
+        "STARTER_TABLE_TRIGGER: show dialog with choices; on choice, add species 1/4/7 to party; show STARTER_OBTAINED dialog",
+        "RIVAL_COUNTER_AFTER: show dialog, then trigger trainer battle with rival Pokemon"
+      ]
+    },
+    {
+      "step": 7,
+      "title": "Fix EncounterSystem to use party Pokemon",
+      "actions": [
+        "In EncounterSystem.startEncounter(), use state.partyPokemon[0] if available; fallback to Bulbasaur Lv.5 only if party is empty"
+      ]
+    },
+    {
+      "step": 8,
+      "title": "Implement battle ITEM action (Pokeball throw)",
+      "actions": [
+        "In BattleSystem.handleActionMenu(), handle choice === 'ITEM': find first Pokeball in state inventory, use it as CatchSystem attempt",
+        "Reduce inventory quantity; push CATCH_ATTEMPT and CATCH_RESULT events to battle",
+        "Handle caught Pokemon: add to party (if <6) or PC",
+        "End battle if catch successful"
+      ]
+    },
+    {
+      "step": 9,
+      "title": "Add post-blackout dialog",
+      "actions": [
+        "In GameEngine, when all party fainted and lastPokemonCenter exists, show dialog 'You blacked out!' then 'Your Pokemon were restored to full health!' before teleporting to center and healing"
+      ]
+    },
+    {
+      "step": 10,
+      "title": "Split GameEngine.ts to under 200 lines",
+      "actions": [
+        "Extract all phase update switch cases to src/game/engine/GamePhaseUpdater.ts (handles TITLE/DIALOG/BADGE_CEREMONY/TRAINER_BATTLE_INTRO/MENU/OVERWORLD/TRANSITION/BATTLE)",
+        "Extract all render switch cases to src/game/engine/GamePhaseRenderer.ts",
+        "GameEngine.ts keeps: constructor, start/stop, loop, loadMap, onPhaseChange, renderError — should be ~150 lines",
+        "GamePhaseUpdater: pure update logic, ~150 lines",
+        "GamePhaseRenderer: pure render logic, ~100 lines"
+      ]
+    },
+    {
+      "step": 11,
+      "title": "Split pokemon.ts and AssetLoader.ts to under 200 lines",
+      "actions": [
+        "Move AssetManifest, TILE_COLORS, SPRITE_SHEET_META constants from AssetLoader.ts to src/game/engine/AssetManifest.ts",
+        "AssetLoader.ts retains loadImage, preloadAllAssets, getPokemonSprite, setMapCache logic",
+        "pokemon.ts: split learnsets to separate object or compress inline — or extract top 5 species to separate section; either achieves <200 lines"
+      ]
+    },
+    {
+      "step": 12,
+      "title": "Implement level-up stat reveal overlay in BattleRenderer",
+      "actions": [
+        "In BattleRenderer, track levelUpOverlay: { active, pokemon, oldStats, newStats, timer }",
+        "On LEVEL_UP event, capture before/after stats and show overlay for 2000ms",
+        "Overlay renders: 'BULBASAUR grew to Lv.6!' + stat change lines (ATK/DEF/SPD/SPC before→after)"
+      ]
+    },
+    {
+      "step": 13,
+      "title": "Wire text speed setting to DialogSystem",
+      "actions": [
+        "useSettings hook stores textSpeed; expose via a module-level variable or singleton",
+        "In GameEngine, read textSpeed from settings before startDialog() calls and pass to dialog.startDialog(pages, speed)",
+        "Verify FAST=16ms/char, NORMAL=40ms, SLOW=80ms all work in DialogSystem"
+      ]
+    },
+    {
+      "step": 14,
+      "title": "Add badge glow animation in MenuRenderer",
+      "actions": [
+        "In renderBadgeCase, for earned badges, draw a sinusoidal alpha overlay: alpha = 0.15 * Math.sin(Date.now() / 400) + 0.15",
+        "Only applies to badge slots where badges[i] === true"
+      ]
+    },
+    {
+      "step": 15,
+      "title": "Add long name truncation in DialogRenderer",
+      "actions": [
+        "Create truncateName(name, maxLen=10): string helper",
+        "Apply in renderDialog and renderNameEntry for all rendered name strings"
+      ]
+    },
+    {
+      "step": 16,
+      "title": "Add empty state messages in UIRenderer",
+      "actions": [
+        "In renderBagScreen, if no items in selected category, render 'Nothing here.' centered",
+        "In PCRenderer (if exists), render 'PC is empty.' if no stored Pokemon"
+      ]
+    },
+    {
+      "step": 17,
+      "title": "Add frame-time tracker in GameEngine.loop()",
+      "actions": [
+        "After computing dt, if dt > 20 log console.warn('Frame budget exceeded: ${dt}ms')",
+        "Track frame count for performance reporting"
+      ]
+    },
+    {
+      "step": 18,
+      "title": "Write E2E test files",
+      "actions": [
+        "tests/e2e/new-game-journey.spec.ts: title screen → Oak dialog → name entry (A,S,H) → rival name (G,A,R,Y) → overworld → walk to lab → starter selection → check party count > 0",
+        "tests/e2e/wild-catch-journey.spec.ts: inject save with Bulbasaur Lv.5 + 5 Pokeballs → walk Route 1 until encounter → fight/catch → verify outcome",
+        "tests/e2e/gym-badge-journey.spec.ts: inject save with Squirtle Lv.15 at Pewter Gym entrance → enter gym → defeat Brock → verify badge ceremony → verify localStorage badge",
+        "tests/e2e/team-management-journey.spec.ts: inject save with 2 Pokemon + Potions → open menu → party/item/save → reload → verify state",
+        "tests/e2e/integration-checks.spec.ts: localStorage persistence, unavailable storage banner, missing sprite fallback, no hardcoded secrets, no >200-line files, mobile 375px, all 5 menu items functional"
+      ]
+    },
+    {
+      "step": 19,
+      "title": "Run tests and fix failures",
+      "actions": [
+        "npm run test:e2e",
+        "Fix any failures discovered",
+        "Verify npm test (vitest) still passes"
+      ]
+    },
+    {
+      "step": 20,
+      "title": "Write PR body and integration report",
+      "actions": [
+        "Write .af/tasks/208/pr-body.md",
+        "Write .af/tasks/208/integration-report.md with pass/fail for each check"
+      ]
+    }
+  ],
+
+  "expected_tests": [
+    "tests/e2e/new-game-journey.spec.ts (new)",
+    "tests/e2e/wild-catch-journey.spec.ts (new)",
+    "tests/e2e/gym-badge-journey.spec.ts (new)",
+    "tests/e2e/team-management-journey.spec.ts (new)",
+    "tests/e2e/integration-checks.spec.ts (new)",
+    "e2e/overworld.spec.ts (existing, must not regress)",
+    "tests/battle-system.test.ts (existing, must not regress)",
+    "tests/damage-formula.test.ts (existing, must not regress)",
+    "tests/catch-formula.test.ts (existing, must not regress)",
+    "tests/dialog-system.test.ts (existing, must not regress)",
+    "tests/npc-trainer.test.ts (existing, must not regress)",
+    "tests/save-system.test.ts (existing, must not regress)"
+  ],
+
+  "persistence_strategy": "localStorage via pokebrowser_save_v1 (new system) for MenuSystem saves; pokebrowser_save_0 (old engine format) for GameEngine load-on-start. Fix: unify GameEngine to preferentially load from new save system. E2E tests inject pre-seeded state via page.addInitScript writing to the key the engine actually reads.",
+
+  "error_handling_approach": "All save operations wrapped in try/catch with user-visible StorageWarning banner (already implemented). Missing sprite 404 produces colored fallback rectangle (already in BattleRenderer/OverworldRenderer). Encounter errors caught and logged. Battle system errors caught in try/catch already. Post-blackout healing shows dialog before restoring. Empty party/inventory renders message instead of blank.",
+
+  "production_readiness_checklist": {
+    "persistence": "localStorage with pokebrowser_save_v1 key; survives refresh. Bug fix: unify engine load to use new save system so partyPokemon/inventory/flags are properly restored.",
+    "error_handling": "All external calls (save/load, asset loading, encounter) have try/catch. StorageWarning banner for localStorage failures. Sprite 404 → colored fallback. Frame error → renderError() shown on canvas.",
+    "input_validation": "Name entry limited to 7 chars by DialogSystem.maxNameLen. Slot validation in save(). No user-facing API calls that need server-side validation (client-only game).",
+    "loading_states": "GameCanvas shows LOADING... overlay while engine initializes. 'Loading...' text in BattleRenderer for null battle state. Saving progress bar animation in MenuSystem.",
+    "empty_states": "NEED TO ADD: empty bag category → 'Nothing here.'; empty PC → 'PC is empty.'; empty party → already shows empty slots.",
+    "security": "No API keys or server calls. No LLM prompts. No user-generated content stored externally. grep check for hardcoded secrets is part of integration-checks.spec.ts.",
+    "component_size": "NEED TO FIX: GameEngine.ts (465 lines), pokemon.ts (234 lines), AssetLoader.ts (217 lines) all exceed 200-line limit. Plan: extract to separate files.",
+    "test_coverage": "4 full journey E2E tests + 1 integration check suite. All major happy paths covered. Error scenarios (missing sprite, localStorage unavailable) covered in integration-checks.spec.ts."
+  }
+}

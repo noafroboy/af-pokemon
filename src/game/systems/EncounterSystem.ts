@@ -1,6 +1,7 @@
 import type { EncounterTableEntry } from '../types/MapTypes'
 import type { GameState } from '../types/GameState'
 import type { BattleState } from '../types/BattleTypes'
+import type { PokemonInstance } from '../types/PokemonTypes'
 import { createPokemonInstance } from '../entities/PokemonInstance'
 import { POKEMON_DATA } from '../data/pokemon'
 
@@ -30,7 +31,7 @@ export class EncounterSystem {
     }
   }
 
-  startEncounter(table: EncounterTableEntry[], _state: GameState): BattleState | null {
+  startEncounter(table: EncounterTableEntry[], state: GameState): BattleState | null {
     if (!table || table.length === 0) {
       console.warn('EncounterSystem: empty encounter table, skipping encounter')
       return null
@@ -39,13 +40,17 @@ export class EncounterSystem {
     try {
       const { speciesId, level } = this.selectWildPokemon(table)
       const wildPokemon = createPokemonInstance(speciesId, level, 'WILD')
-
-      // Player Pokemon: default to Bulbasaur Lv.5 (party lookup not available)
-      const playerPokemon = createPokemonInstance(1, 5, 'PLAYER')
-
       const wildName = POKEMON_DATA[speciesId]?.name?.toUpperCase() ?? `#${speciesId}`
 
-      const battle: BattleState = {
+      // Use first party Pokemon if available, otherwise create default
+      let playerPokemon: PokemonInstance
+      if (state.partyPokemon.length > 0) {
+        playerPokemon = JSON.parse(JSON.stringify(state.partyPokemon[0])) as PokemonInstance
+      } else {
+        playerPokemon = createPokemonInstance(1, 5, 'PLAYER')
+      }
+
+      return {
         wildPokemon,
         playerPokemon,
         playerPartyIndex: 0,
@@ -57,16 +62,11 @@ export class EncounterSystem {
         battleOver: false,
         playerFled: false,
         caughtPokemon: null,
-        statStages: {
-          player: {},
-          wild: {},
-        },
+        statStages: { player: {}, wild: {} },
         battlePhase: 'INTRO',
         cursorIndex: 0,
         sleepTurns: { player: 0, wild: 0 },
       }
-
-      return battle
     } catch (err) {
       console.error('EncounterSystem: failed to start encounter:', err)
       return null
