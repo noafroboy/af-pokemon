@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
 
 const MAPS: Record<string, unknown> = {
-  'pallet-town': () => import('@/game/data/maps/pallet-town.json'),
-  'route-1': () => import('@/game/data/maps/route-1.json'),
+  'pallet-town':    () => import('@/game/data/maps/pallet-town.json'),
+  'route-1':        () => import('@/game/data/maps/route-1.json'),
+  'viridian-city':  () => import('@/game/data/maps/viridian-city.json'),
+  'pokemon-center': () => import('@/game/data/maps/pokemon-center.json'),
+  'pewter-gym':     () => import('@/game/data/maps/pewter-gym.json'),
 }
 
 export async function GET(

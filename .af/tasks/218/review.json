@@ -1,0 +1,53 @@
+{
+  "verdict": "fail",
+  "dimensions": [
+    {
+      "name": "Requirements Met",
+      "score": 7,
+      "gaps_to_10": "The explicit requirement 'The Press Start 2P font still renders correctly in the game UI after the font migration' is broken. next/font/google self-hosts the font under an auto-generated internal name (e.g. '__Press_Start_2P_xxxxxx'), but globals.css still uses font-family: 'Press Start 2P', monospace — a literal string that is no longer registered anywhere since the Google CDN <link> tags were removed. Font falls back to system monospace. All other requirements (maps 200/404 responses, lint passes, scripts added) are met."
+    },
+    {
+      "name": "Error Handling",
+      "score": 9,
+      "gaps_to_10": "Maps API route has correct try/catch with user-facing error messages and appropriate HTTP status codes. Minor gap: dynamic import errors (e.g., malformed JSON file) surface as 500 with a generic message, which is acceptable."
+    },
+    {
+      "name": "UX Completeness",
+      "score": 5,
+      "gaps_to_10": "The Press Start 2P pixel-art font is the defining visual element of the entire game UI. After this change, every text element — menus, dialogs, HUD, battle screen — renders in the system fallback monospace font. The game is functional but visually broken: it no longer looks like an 8-bit game. This is the most visible regression possible short of a blank screen."
+    },
+    {
+      "name": "Code Quality",
+      "score": 8,
+      "gaps_to_10": "Changes are minimal and well-scoped. MAPS object is clean. Font instantiation follows Next.js conventions. The prebuild/clean scripts use inline Node.js correctly. Minor: trailing spaces used for alignment in MAPS object (cosmetic)."
+    },
+    {
+      "name": "Test Coverage",
+      "score": 6,
+      "gaps_to_10": "No tests exist for the 3 newly registered map IDs (viridian-city, pokemon-center, pewter-gym). The requirement that each returns HTTP 200 is asserted only in prose, not in any test. The existing 289 tests all pass. A test file for the maps API route should verify all 5 map IDs return 200 and 'nonexistent' returns 404."
+    },
+    {
+      "name": "Security",
+      "score": 10,
+      "gaps_to_10": "No security concerns. No user input flows into the map lookup beyond the route parameter, which is matched against a closed allow-list (the MAPS object). No secrets or API keys. No XSS vectors introduced."
+    }
+  ],
+  "average_score": 7.5,
+  "issues": [
+    {
+      "severity": "P1",
+      "file": "app/globals.css",
+      "description": "The font migration from <link> tags to next/font/google is incomplete. next/font/google self-hosts the font and registers it under an auto-generated internal @font-face name (e.g. '__Press_Start_2P_xxxxxxx'), stored in the CSS variable '--font-press-start'. The Google Fonts CDN <link> tags were removed from layout.tsx, so 'Press Start 2P' is no longer a registered font name. globals.css line 19 still uses font-family: 'Press Start 2P', monospace — this string no longer resolves to any font and falls back to system monospace. Every text element in the game (menus, dialogs, battle HUD, map labels) loses the pixel-art font.",
+      "fix_guidance": "Update globals.css line 19: change `font-family: 'Press Start 2P', monospace;` to `font-family: var(--font-press-start), monospace;`. The CSS variable '--font-press-start' is defined on the <html> element via pressStart2P.variable class and contains the correct internal font family name that Next.js registered. No other changes are required.",
+      "checklist_item": "requirements"
+    },
+    {
+      "severity": "P2",
+      "file": "app/api/maps/[mapId]/route.ts",
+      "description": "No tests cover the 3 newly registered map IDs. The requirements explicitly state that GET /api/maps/viridian-city, /pokemon-center, and /pewter-gym must return HTTP 200. This is asserted only by code inspection, not by an automated test. If a future change accidentally removes one of these entries, no test will catch the regression.",
+      "fix_guidance": "Add a test file (e.g., src/game/__tests__/maps-api.test.ts or tests/maps-api.test.ts) that mocks the dynamic imports and verifies: (1) all 5 known map IDs return 200 with map data, (2) an unknown ID returns 404 with the expected error JSON. Match the project's existing Vitest test patterns.",
+      "checklist_item": "test_quality"
+    }
+  ],
+  "summary": "Two of the three sub-tasks are implemented correctly: the MAPS lookup table now includes all 5 map files, and the clean/prebuild npm scripts are properly added. The font migration, however, is incomplete — globals.css was not updated to use the CSS variable and still references 'Press Start 2P' by its original string name, which is no longer registered after removing the Google CDN links. This causes every text element in the game to fall back to system monospace, visually breaking the entire UI. The fix is a one-line change to globals.css. Additionally, no tests were added for the 3 newly registered map IDs (P2)."
+}
