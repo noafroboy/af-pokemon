@@ -16,6 +16,18 @@ import { TrainerNPC } from '../entities/NPC'
 
 export const TRANSITION_FRAMES = 18
 
+/** Maps each Gen-1 badge name to its slot index (0–7) in state.flags['badges']. */
+export const BADGE_INDEX_MAP: Record<string, number> = {
+  BOULDER: 0,
+  CASCADE: 1,
+  THUNDER: 2,
+  RAINBOW: 3,
+  SOUL:    4,
+  MARSH:   5,
+  VOLCANO: 6,
+  EARTH:   7,
+}
+
 export interface PhaseUpdateCtx {
   isEncounterTransition: boolean
   pendingBattleNpc: string | null
@@ -69,7 +81,7 @@ function handleBattleDone(state: GameState, deps: PhaseUpdateDeps): void {
     if (hasBadge) {
       const badges = Array.isArray(state.flags['badges'])
         ? [...state.flags['badges'] as boolean[]] : new Array(8).fill(false)
-      const badgeIndex = npcEntity.badgeReward === 'BOULDER' ? 0 : 0
+      const badgeIndex = BADGE_INDEX_MAP[npcEntity.badgeReward!] ?? 0
       badges[badgeIndex] = true
       state.flags['badges'] = badges
       state.badgeCeremonyTimer = 120

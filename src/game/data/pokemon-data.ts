@@ -58,6 +58,36 @@ export const POKEMON_DATA_EXT: Record<number, PokemonSpecies> = {
     evolutions: [],
     cry: { pitch: 125, length: 0.5, volume: 0.8 },
   },
+  74: {
+    id: 74, name: 'Geodude', types: ['Rock', 'Ground'],
+    baseStats: { hp: 40, attack: 80, defense: 100, speed: 20, special: 30 },
+    catchRate: 255, baseExp: 86, expGroup: ExpGroup.MEDIUM_SLOW,
+    learnset: [
+      { level: 1, moveId: 88 }, { level: 11, moveId: 106 },
+    ],
+    evolutions: [{ method: 'level', value: 25, intoSpeciesId: 75 }],
+    cry: { pitch: 110, length: 0.4, volume: 0.8 },
+  },
+  75: {
+    id: 75, name: 'Graveler', types: ['Rock', 'Ground'],
+    baseStats: { hp: 55, attack: 95, defense: 115, speed: 35, special: 45 },
+    catchRate: 120, baseExp: 134, expGroup: ExpGroup.MEDIUM_SLOW,
+    learnset: [
+      { level: 1, moveId: 88 }, { level: 11, moveId: 106 },
+    ],
+    evolutions: [],
+    cry: { pitch: 90, length: 0.5, volume: 0.8 },
+  },
+  95: {
+    id: 95, name: 'Onix', types: ['Rock', 'Ground'],
+    baseStats: { hp: 35, attack: 45, defense: 160, speed: 70, special: 30 },
+    catchRate: 45, baseExp: 108, expGroup: ExpGroup.MEDIUM_FAST,
+    learnset: [
+      { level: 1, moveId: 88 }, { level: 9, moveId: 20 },
+    ],
+    evolutions: [],
+    cry: { pitch: 60, length: 0.8, volume: 0.9 },
+  },
   25: {
     id: 25, name: 'Pikachu', types: ['Electric'],
     baseStats: { hp: 35, attack: 55, defense: 30, speed: 90, special: 50 },
