@@ -5,6 +5,14 @@ import { drawEnemyPanel, drawPlayerPanel } from './battle/PanelRenderer'
 import type { AnimState } from './battle/PanelRenderer'
 import { drawActionMenu, drawMoveMenu, drawDialogText } from './battle/MenuRenderer'
 import { getPokemonSprite } from '../engine/AssetLoader'
+import {
+  type AttackEffectState,
+  createAttackEffectState,
+  triggerAttackEffect,
+  updateAttackEffect,
+  drawAttackFlash,
+  resetAttackEffect,
+} from './battle/AttackEffects'
 
 const VIEWPORT_W = 160
 const VIEWPORT_H = 144
@@ -19,6 +27,8 @@ export class BattleRenderer {
   private lastRenderTime = 0
   private levelUpDisplay: LevelUpDisplay | null = null
   private lastEventCount = 0
+  private enemyEffect: AttackEffectState = createAttackEffectState()
+  private playerEffect: AttackEffectState = createAttackEffectState()
 
   render(ctx: CanvasRenderingContext2D, battle: BattleState | null, _state: GameState): void {
     ctx.imageSmoothingEnabled = false
@@ -40,36 +50,44 @@ export class BattleRenderer {
     this.anim.wildDisplayHp = this.lerp(this.anim.wildDisplayHp, battle.wildPokemon.currentHp, dt, 400)
     this.anim.playerDisplayHp = this.lerp(this.anim.playerDisplayHp, battle.playerPokemon.currentHp, dt, 400)
 
+    // Advance attack effect timers
+    updateAttackEffect(this.enemyEffect, dt)
+    updateAttackEffect(this.playerEffect, dt)
+    this.checkDamageEvents(battle, now)
+
     // Draw battle background
     ctx.fillStyle = '#c8e8c8'
     ctx.fillRect(0, 0, VIEWPORT_W, VIEWPORT_H - 48)
 
     // Enemy sprite (front) — falls back to colored rect if sprite not loaded
+    const enemyX = 88 + this.enemyEffect.shakeOffset
     const enemySprite = getPokemonSprite(battle.wildPokemon.speciesId, 'front')
     if (enemySprite) {
-      ctx.drawImage(enemySprite, 88, 16, 48, 48)
+      ctx.drawImage(enemySprite, enemyX, 16, 48, 48)
     } else {
       ctx.fillStyle = '#666688'
-      ctx.fillRect(88, 16, 48, 48)
+      ctx.fillRect(enemyX, 16, 48, 48)
       ctx.fillStyle = '#ffffff'
       ctx.font = '4px monospace'
       ctx.textAlign = 'center'
-      ctx.fillText(`#${battle.wildPokemon.speciesId}`, 112, 44)
+      ctx.fillText(`#${battle.wildPokemon.speciesId}`, enemyX + 24, 44)
     }
+    drawAttackFlash(ctx, enemyX, 16, 48, 48, this.enemyEffect)
 
     // Player sprite (back) — falls back to colored rect if sprite not loaded
+    const playerX = 16 + this.playerEffect.shakeOffset
     const playerSprite = getPokemonSprite(battle.playerPokemon.speciesId, 'back')
     if (playerSprite) {
-      ctx.drawImage(playerSprite, 16, 56, 48, 40)
+      ctx.drawImage(playerSprite, playerX, 56, 48, 40)
     } else {
       ctx.fillStyle = '#886666'
-      ctx.fillRect(16, 56, 48, 40)
+      ctx.fillRect(playerX, 56, 48, 40)
     }
+    drawAttackFlash(ctx, playerX, 56, 48, 40, this.playerEffect)
 
     drawEnemyPanel(ctx, battle, this.anim)
     drawPlayerPanel(ctx, battle, this.anim)
 
-    this.checkLevelUpEvents(battle, now)
     this.renderPhase(ctx, battle, now)
 
     // INTRO phase overlay
@@ -85,11 +103,17 @@ export class BattleRenderer {
     }
   }
 
-  private checkLevelUpEvents(battle: BattleState, now: number): void {
+  private checkDamageEvents(battle: BattleState, now: number): void {
     const newEvents = battle.events.slice(this.lastEventCount)
     this.lastEventCount = battle.events.length
     for (const ev of newEvents) {
-      if (ev.type === 'LEVEL_UP') {
+      if (ev.type === 'DAMAGE') {
+        if (ev.target === 'wild') {
+          triggerAttackEffect(this.enemyEffect, ev.effectiveness)
+        } else {
+          triggerAttackEffect(this.playerEffect, ev.effectiveness)
+        }
+      } else if (ev.type === 'LEVEL_UP') {
         const name = battle.playerPokemon.nickname ?? `#${battle.playerPokemon.speciesId}`
         this.levelUpDisplay = { level: ev.newLevel, name, showUntil: now + 2000 }
       }
@@ -157,5 +181,7 @@ export class BattleRenderer {
     this.lastRenderTime = 0
     this.levelUpDisplay = null
     this.lastEventCount = 0
+    resetAttackEffect(this.enemyEffect)
+    resetAttackEffect(this.playerEffect)
   }
 }
