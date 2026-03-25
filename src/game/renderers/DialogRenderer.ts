@@ -10,6 +10,12 @@ const BOX_COLOR = '#f8f8f8'
 const BORDER_COLOR = '#383838'
 const TEXT_COLOR = '#000000'
 
+/** Truncate a name to maxLen chars, appending '…' if trimmed */
+export function truncateName(name: string, maxLen = 10): string {
+  if (name.length <= maxLen) return name
+  return name.slice(0, maxLen - 1) + '\u2026'
+}
+
 // Name entry keyboard rows
 const KB_ROWS = [
   'ABCDEFGHIJKLM',
@@ -109,8 +115,8 @@ export function renderNameEntry(ctx: CanvasRenderingContext2D, system: DialogSys
   // Label
   ctx.fillText(label, PADDING, PADDING)
 
-  // Current name display
-  const displayName = system.currentName + '_'
+  // Current name display (truncate if over 10 chars)
+  const displayName = truncateName(system.currentName, 10) + '_'
   ctx.fillText(displayName, PADDING, PADDING + LINE_HEIGHT + 4)
 
   // Keyboard grid

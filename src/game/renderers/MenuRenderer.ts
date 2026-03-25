@@ -123,6 +123,7 @@ export function renderBadgeCase(ctx: CanvasRenderingContext2D, badges: boolean[]
   ctx.textAlign = 'center'
   ctx.fillText('BADGE CASE', VIEWPORT_W / 2, 14)
 
+  const glowT = Date.now() / 600
   for (let i = 0; i < 8; i++) {
     const col = i % 4
     const row = Math.floor(i / 4)
@@ -136,5 +137,16 @@ export function renderBadgeCase(ctx: CanvasRenderingContext2D, badges: boolean[]
     ctx.strokeStyle = badges[i] ? '#f4f4f4' : '#556'
     ctx.lineWidth = 1
     ctx.stroke()
+
+    // Sinusoidal glow overlay for earned badges
+    if (badges[i]) {
+      const glowAlpha = ((Math.sin(glowT + i * 0.9) + 1) / 2) * 0.35
+      ctx.globalAlpha = glowAlpha
+      ctx.fillStyle = '#ffffff'
+      ctx.beginPath()
+      ctx.arc(x + 12, y + 12, 14, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.globalAlpha = 1
+    }
   }
 }

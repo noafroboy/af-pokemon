@@ -1,0 +1,25 @@
+## Plan Summary
+Files to modify: [object Object], [object Object], [object Object], [object Object], [object Object], [object Object], [object Object], [object Object], [object Object], [object Object], [object Object], [object Object], [object Object]
+Files to create: tests/e2e/new-game-journey.spec.ts, tests/e2e/wild-catch-journey.spec.ts, tests/e2e/gym-badge-journey.spec.ts, tests/e2e/team-management-journey.spec.ts, tests/e2e/integration-checks.spec.ts, src/game/engine/GamePhaseUpdater.ts, src/game/engine/GamePhaseRenderer.ts, src/game/engine/ScriptHandler.ts, src/game/data/pokemon-data.ts, src/game/engine/AssetManifest.ts
+Approach: A-Conservative
+Steps:
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]
+- [object Object]

@@ -27,6 +27,8 @@ export default function GameCanvas({ scale = 3 }: Props) {
     ctx.imageSmoothingEnabled = false
 
     let engine: GameEngine | null = null
+    let attrsRafId: number | null = null
+
     try {
       engine = new GameEngine(ctx)
       setLoading(false)
@@ -37,8 +39,19 @@ export default function GameCanvas({ scale = 3 }: Props) {
       return
     }
 
+    // Update data-* attributes each frame for E2E test assertions
+    const updateAttrs = () => {
+      if (!engine || !canvas) return
+      canvas.setAttribute('data-game-phase', engine.getPhase())
+      canvas.setAttribute('data-map-id', engine.getMapId())
+      canvas.setAttribute('data-party-count', String(engine.getPartyCount()))
+      attrsRafId = requestAnimationFrame(updateAttrs)
+    }
+    attrsRafId = requestAnimationFrame(updateAttrs)
+
     return () => {
       engine?.stop()
+      if (attrsRafId !== null) cancelAnimationFrame(attrsRafId)
     }
   }, [])
 
@@ -75,11 +88,10 @@ export default function GameCanvas({ scale = 3 }: Props) {
         width={VIEWPORT_W}
         height={VIEWPORT_H}
         data-testid="game-canvas"
-        style={{
-          width: cssW,
-          height: cssH,
-          imageRendering: 'pixelated',
-        }}
+        data-game-phase="TITLE"
+        data-map-id=""
+        data-party-count="0"
+        style={{ width: cssW, height: cssH, imageRendering: 'pixelated' }}
         className="border-2 border-[#566c86]"
       />
     </div>

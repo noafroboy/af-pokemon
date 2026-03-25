@@ -22,7 +22,7 @@ function StorageWarning() {
   const [dismissed, setDismissed] = useState(false)
   if (available || dismissed || !message) return null
   return (
-    <div className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-yellow-500 text-black text-[10px] font-pixel px-3 py-1">
+    <div data-testid="storage-warning" className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between bg-yellow-500 text-black text-[10px] font-pixel px-3 py-1">
       <span>{message}</span>
       <button onClick={() => setDismissed(true)} className="ml-4 underline">Dismiss</button>
     </div>
