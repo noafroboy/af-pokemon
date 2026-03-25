@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { GameState, NewSaveSlot, SaveSlotSummary } from '../types/GameState'
 
 export const SAVE_KEY = 'pokebrowser_save_v1'
@@ -111,7 +111,12 @@ export function autoSave(gameState: GameState): void {
 }
 
 export function useStorageWarning(): { available: boolean; message: string | null } {
-  const [storageOk] = useState(() => isAvailable())
+  const [storageOk, setStorageOk] = useState(true)
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setStorageOk(isAvailable())
+  }, [])
 
   const available = storageOk && saveAvailable
   const message = available

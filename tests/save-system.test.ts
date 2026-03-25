@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { save, load, listSlots, deleteSlot, isAvailable, autoSave, SAVE_KEY, SCHEMA_VERSION } from '../src/game/systems/SaveSystem'
+import { renderHook, act } from '@testing-library/react'
+import { save, load, listSlots, deleteSlot, isAvailable, autoSave, SAVE_KEY, SCHEMA_VERSION, useStorageWarning } from '../src/game/systems/SaveSystem'
 import { createInitialGameState } from '../src/game/types/GameState'
 import { useItem, addItem, removeItem, getItemCount } from '../src/game/systems/InventorySystem'
 import type { PokemonInstance } from '../src/game/types/PokemonTypes'
@@ -200,5 +201,36 @@ describe('InventorySystem', () => {
 
   it('getItemCount returns 0 for missing item', () => {
     expect(getItemCount([], 999)).toBe(0)
+  })
+})
+
+describe('useStorageWarning', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('initial render returns available: true (no SSR flash)', () => {
+    // Before useEffect fires, storageOk starts as true so no warning appears
+    const { result } = renderHook(() => useStorageWarning())
+    // On initial render the hook should report available (assumes storage is fine)
+    expect(result.current.available).toBe(true)
+    expect(result.current.message).toBeNull()
+  })
+
+  it('reports available after mount when localStorage is accessible', async () => {
+    const { result } = renderHook(() => useStorageWarning())
+    await act(async () => {})
+    expect(result.current.available).toBe(true)
+    expect(result.current.message).toBeNull()
+  })
+
+  it('reports unavailable after mount when localStorage throws', async () => {
+    localStorageMock.setItem.mockImplementation(() => {
+      throw new DOMException('Blocked', 'SecurityError')
+    })
+    const { result } = renderHook(() => useStorageWarning())
+    await act(async () => {})
+    expect(result.current.available).toBe(false)
+    expect(result.current.message).not.toBeNull()
   })
 })
