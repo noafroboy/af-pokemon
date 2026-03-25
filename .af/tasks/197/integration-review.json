@@ -1,0 +1,221 @@
+{
+  "verdict": "fail",
+  "overall_score": 6.3,
+  "dimensions": [
+    {
+      "name": "Visual Cohesion",
+      "score": 7,
+      "evidence": "Consistent Gameboy-era aesthetic: 160x144 viewport, pixel-font (Press Start 2P), dark blue palette (#1a1c2c), crisp 16x16 tile rendering with imageSmoothingEnabled=false, walk animation with 3-frame cycle, battle panels with HP bars, level-up overlay. Sprite fallbacks (colored rects with species IDs) display when DALL-E images fail. Player is rendered as a procedural pixel-art figure with directional eyes and walking legs. Battle background is solid green with correct layout. The art is visually coherent even without all images loaded."
+    },
+    {
+      "name": "Feature Completeness",
+      "score": 5,
+      "evidence": "Battle system, dialog, NPC interaction, overworld movement, collision, and encounter system are all implemented. 21 unique Pokemon species with full stats/learnsets/evolutions. Type chart with all 18 types. Status effects (burn, poison, paralysis, sleep, freeze). EXP/level-up system. Save/load (localStorage). Music and SFX (Tone.js + Howler). Mobile controls. HOWEVER: 4 P1 issues break core features: (1) catch mechanic broken — no Pokeballs ever given to player; (2) route-1 warps use wrong field names (targetTileX vs targetX), teleporting player to NaN coordinates; (3) pewter-gym is unreachable from the overworld and its exit warp references a non-existent map ('pewter-city'); (4) paralysis prevents movement 75% of the time instead of 25%. Rival starter battle is missing. PokeMart is absent."
+    },
+    {
+      "name": "Responsive Design",
+      "score": 8,
+      "evidence": "Desktop: scale parameter (default 3x = 480x432px), keyboard footer shown (arrow keys/Z/X/Enter). Mobile (<= 768px): canvas scales to fill full viewport width, keyboard footer hidden, virtual D-pad + B/A + SELECT/START controls shown via CSS block/md:hidden. Touch buttons use pointer events with press/release feedback and touchAction:none. Canvas uses imageRendering:pixelated for crisp pixels at all scales. Settings modal supports scale (2x/3x/4x). The 375px mobile layout fits on screen. One minor issue: MobileControls container uses Tailwind class 'flex' directly without the wrapper needed (block md:hidden + flex inline mixing), but it renders."
+    },
+    {
+      "name": "Navigation",
+      "score": 6,
+      "evidence": "Phase system (TITLE → DIALOG → OVERWORLD → BATTLE → MENU → TRANSITION → BADGE_CEREMONY) is correctly wired. Map warps work for pallet-town ↔ viridian-city ↔ pokemon-center paths (those use correct 'targetX'/'targetY' fields). The route-1 bidirectional warps are broken (wrong field names: 'targetTileX'). The pewter-gym is inaccessible — no warp leads to it from the game world. The menu (POKEMON/ITEM/SAVE/OPTIONS/EXIT) opens with Enter key and slides in smoothly. NPC interactions and script zones work. Screen transitions (encounter flash, fade to black for warps) are implemented."
+    },
+    {
+      "name": "Data Persistence",
+      "score": 7,
+      "evidence": "Dual save-system architecture: legacy system (pokebrowser_save_0/1/2) and v1 system (pokebrowser_save_v1 with slots 1/2/3). GameEngine.applyV1Save() merges both. Save validates schema version. Save data includes currentMap, player position, partyPokemon (full instances), inventory, flags (badges, playerName, defeated trainers). LoadGame uses isValidSaveSlot() for type checking. QuotaExceededError is caught and surfaces as a UI warning banner. Storage warning shows on SSR due to missing typeof window guard in isAvailable() but this is cosmetic — actual save/load happens client-side only."
+    },
+    {
+      "name": "Error Handling",
+      "score": 7,
+      "evidence": "GameEngine wraps update/render in try/catch and displays error overlay. AssetLoader gracefully falls back when sprites or tilesets fail to load (colored rectangles for tiles, species-ID rectangles for Pokemon). AudioManager wraps all operations in try/catch and handles failed Tone.js/Howler init. EncounterSystem catches errors in startEncounter. SaveSystem catches QuotaExceededError. InputManager handles missing key states safely. PokemonInstance throws on unknown speciesId. Fallback behavior on missing warp targets: loadMap() warns and returns without crashing. However, the route-1 warp bug produces NaN tile coordinates silently."
+    },
+    {
+      "name": "Polish",
+      "score": 7,
+      "evidence": "Encounter flash (scanline expand) and fade-to-black transitions. HP bar smooth lerp animation during battle. Level-up overlay with 2-second display. Chiptune music via Tone.js (title, pallet town, route 1, pokemon center, wild battle, trainer battle, gym battle, victory fanfare). Per-species cry synthesis via AudioContext. Text crawl with configurable speed (SLOW/NORMAL/FAST) and text blip SFX. Exclamation mark (!) above trainers when spotted. Trainer approach walk animation. Badge ceremony screen ('BADGE GET!'). Settings modal with volume sliders. Storage warning banner. Press Start 2P font loaded from Google Fonts. The game feels unfinished due to the broken catch and gym access, but the presentation quality is high where features work."
+    }
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion": "Playable on desktop (keyboard: arrow keys + Z/X/Enter)",
+      "status": "pass",
+      "evidence": "InputManager registers ArrowUp/Down/Left/Right, z, x, Enter, Escape. Movement, battle menus, dialog, and menu navigation all use these keys correctly."
+    },
+    {
+      "criterion": "Playable on mobile (virtual D-pad + A/B buttons)",
+      "status": "pass",
+      "evidence": "MobileControls renders D-pad (up/down/left/right), A/B buttons, SELECT/START. All map to InputManager via registerTouchButton(). Touch events use pointer events with touchAction:none."
+    },
+    {
+      "criterion": "Tile-based movement on a grid (not free movement)",
+      "status": "pass",
+      "evidence": "Player moves one 16px tile at a time via startMove(). pixelOffset=16 decrements by 8 per frame. Collision checked against collision layer array. NPC collision also checked."
+    },
+    {
+      "criterion": "Turn-based battle system with type effectiveness",
+      "status": "pass",
+      "evidence": "BattleSystemCore.processTurn() implements full turn order (speed-based), FIGHT/ITEM/RUN actions, status checks. TYPE_CHART has full 18x18 effectiveness matrix. STAB, critical hits (Gen 1 speed-based), stat stages all implemented."
+    },
+    {
+      "criterion": "At least 15 unique Pokemon with distinct sprites, stats, and moves",
+      "status": "pass",
+      "evidence": "21 species defined: IDs 1-20 and 25 (Bulbasaur through Raticate + Pikachu), each with unique baseStats, types, learnset, and cry params. Front/back sprites exist as PNGs in /public/assets/sprites/pokemon/."
+    },
+    {
+      "criterion": "Working Pokeball catch mechanic with catch rate formula",
+      "status": "fail",
+      "evidence": "CatchSystem.ts implements the Gen 1 formula correctly (modifiedCatchRate = baseCatchRate * (3*maxHp - 2*currentHp) / (3*maxHp) * ballBonus, 4-shake algorithm). However, player's initial inventory is empty ([]) and no Pokeballs are ever granted — not from onboarding, not from any script, not from PokeMart (none exists). BattleSystem.handleActionMenu silently ignores ITEM selection when no balls are present. The catch mechanic is mechanically correct but inaccessible."
+    },
+    {
+      "criterion": "At least 2 routes + 1 town + 1 gym + Pokemon Center",
+      "status": "fail",
+      "evidence": "Maps present: pallet-town (1 town), route-1, viridian-city (2nd town, not a route), pokemon-center, pewter-gym. Route-1 is the only true route. Pewter gym is in MAP_BUNDLES but unreachable — no warp in any loaded map leads to 'pewter-gym'. Viridian City has a warp to pokemon-center but not to pewter-gym or any other map. The gym exists as data but cannot be accessed during gameplay."
+    },
+    {
+      "criterion": "Save/load game state (localStorage)",
+      "status": "pass",
+      "evidence": "Dual save system: SaveSystem.ts (engine, slots 0-2) and systems/SaveSystem.ts (v1, slots 1-3). GameEngine loads from slot 0 on start and applies v1 save via applyV1Save(). MenuSystem.save view persists to localStorage. Full gameState (map, position, party, inventory, flags) is serialized."
+    },
+    {
+      "criterion": "Smooth screen transitions (fade to black for encounters, slide for route changes)",
+      "status": "pass",
+      "evidence": "encounterFlash() in TransitionRenderer.ts produces scanline-expand transition. Warp transitions use rgba fade-to-black. TRANSITION_FRAMES=18 countdown drives both. BattleRenderer.renderIntro() shows encounter flash for 400ms before battle starts."
+    },
+    {
+      "criterion": "Battle animations (attack effects, HP bar drain, faint animation)",
+      "status": "pass",
+      "evidence": "HP bar drains via lerp() in BattleRenderer (400ms duration). Level-up overlay shows for 2 seconds. Encounter flash animation on battle entry. FAINT event triggers pokemon-faint SFX. HP bar color reflects remaining HP ratio. EXP bar animation state tracked. No explicit attack move animation (flash/shake), but audio cues for hit-normal/hit-super/hit-not-very/no-effect play correctly."
+    },
+    {
+      "criterion": "Text crawl for dialog and battle messages (character by character, like the original)",
+      "status": "pass",
+      "evidence": "DialogSystem.update() increments charIndex by CHAR_DELAY[speed] ms per char (SLOW=80ms, NORMAL=40ms, FAST=16ms). AudioManager.playTextBlip() fires each character change with 100ms throttle. Pressing Z skips to end of current page. Confirmed in DialogRenderer.ts rendering the substring up to charIndex."
+    },
+    {
+      "criterion": "Professor Oak intro, name entry, rival naming, starter Pokemon selection",
+      "status": "pass",
+      "evidence": "OnboardingSystem phases: TITLE → OAK_INTRO (3 dialog pages) → PLAYER_NAME (entry, max 7 chars) → RIVAL_NAME → DONE. ScriptHandler.handleStarterTable() offers 3 choices (Bulbasaur/Charmander/Squirtle), creates PokemonInstance at level 5, adds to party."
+    },
+    {
+      "criterion": "Wild encounter and catch in tall grass",
+      "status": "fail",
+      "evidence": "Encounter detection works (tile 3 = tall grass, encounter rate 20/255 per step). EncounterSystem.startEncounter() creates battle state. Catch formula is correctly implemented. However, player has no Pokeballs at any point in the game — catch is mechanically broken."
+    },
+    {
+      "criterion": "Gym battle (trainer navigation, gym leader, badge)",
+      "status": "fail",
+      "evidence": "Pewter gym data exists with youngster trainer and Brock (gym leader with badgeReward='BOULDER'). Badge ceremony (BADGE_CEREMONY phase, 'BADGE GET!' screen) is implemented. However, no warp from any accessible map leads to 'pewter-gym', making it completely unreachable during normal gameplay."
+    },
+    {
+      "criterion": "Team management menu (party, items, save, options)",
+      "status": "pass",
+      "evidence": "Menu opens with Enter, slides in with animation. POKEMON view shows party screen. ITEM view shows bag with BALL/MEDICINE/TM categories. SAVE view shows 3 save slots. OPTIONS shows textSpeed/sound/scale. Navigation is functional."
+    },
+    {
+      "criterion": "Pokemon Center healing",
+      "status": "pass",
+      "evidence": "Pokemon Center map exists with warp from Viridian City. GameEngine.loadMap() sets lastPokemonCenter on entering. ScriptHandler.handleNurseHeal() presents YES/NO choice and restores all party HP to maxHp on YES. If all Pokemon faint, player is warped back to lastPokemonCenter."
+    },
+    {
+      "criterion": "Audio: chiptune music + SFX + Pokemon cries",
+      "status": "pass",
+      "evidence": "AudioManager uses Tone.js for chiptune music (title, pallettown, route1, pokemon-center, wild-battle, trainer-battle, gym-battle, victory-fanfare, badge-fanfare) and Howler for 19 WAV SFX files. Pokemon cries are synthesized via AudioContext using per-species pitch/length/volume params. Audio initializes on first gesture (keyboard or touch) to comply with browser autoplay policy."
+    },
+    {
+      "criterion": "Next.js 15 with TypeScript",
+      "status": "pass",
+      "evidence": "Build succeeds with Next.js 15.5.14, TypeScript 5.6.2. No type errors in build. Uses App Router. Canvas rendered client-side via dynamic import with ssr:false."
+    },
+    {
+      "criterion": "HTML5 Canvas for rendering",
+      "status": "pass",
+      "evidence": "GameCanvas.tsx creates a 160x144 canvas with getContext('2d'). All game rendering uses ctx.fillRect, ctx.drawImage, ctx.fillText. imageSmoothingEnabled=false throughout. Scaled via CSS (width/height) with imageRendering:pixelated."
+    },
+    {
+      "criterion": "Howler.js for audio",
+      "status": "pass",
+      "evidence": "package.json includes howler@^2.2.4. AudioManager dynamically imports Howler for SFX files (WAV). Tone.js used for chiptune music synthesis."
+    },
+    {
+      "criterion": "localStorage for save data",
+      "status": "pass",
+      "evidence": "Two save keys: 'pokebrowser_save_{0,1,2}' (legacy) and 'pokebrowser_save_v1' (v1). Both read/write localStorage. QuotaExceededError handled gracefully."
+    }
+  ],
+  "issues": [
+    {
+      "severity": "P1",
+      "area": "Map Warps / Navigation",
+      "description": "route-1.json uses 'targetTileX' and 'targetTileY' field names for both of its warp definitions, but WarpDefinition type and OverworldSystem.checkWarp() read 'targetX' and 'targetY'. When the player steps on either route-1 warp (to pallet-town at y=29 or to viridian-city at y=0), the warp fires with warp.targetX=undefined and warp.targetY=undefined. The player is teleported to tile (NaN, NaN), breaking navigation and causing all subsequent position-dependent logic to fail.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/data/maps/route-1.json",
+      "suggestion": "Rename 'targetTileX' to 'targetX' and 'targetTileY' to 'targetY' in both warp objects in route-1.json to match the WarpDefinition interface and OverworldSystem usage."
+    },
+    {
+      "severity": "P1",
+      "area": "Map Connectivity / Gym Access",
+      "description": "The pewter-gym map is included in MAP_BUNDLES and has full trainer/boss data, but no warp in any accessible map (pallet-town, route-1, viridian-city, pokemon-center) points to 'pewter-gym'. Additionally, viridian-city has no route-2 or pewter-city warp. Pewter gym cannot be reached via normal gameplay, making the gym badge requirement impossible to fulfill.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/data/maps/viridian-city.json",
+      "suggestion": "Add a warp in viridian-city.json leading to 'pewter-gym' (or a pewter-city map that warps into it). Additionally fix pewter-gym.json exit warp which incorrectly targets 'pewter-city' (not in MAP_BUNDLES) — change to 'viridian-city'."
+    },
+    {
+      "severity": "P1",
+      "area": "Map Warps / Navigation",
+      "description": "pewter-gym.json exit warp (tileX:7, tileY:14) targets map 'pewter-city', which does not exist in MAP_BUNDLES. If a player somehow enters the gym and uses the exit, loadMap() will warn and silently fail, leaving the player in a broken state inside pewter-gym with no way out.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/data/maps/pewter-gym.json",
+      "suggestion": "Change the exit warp targetMap from 'pewter-city' to 'viridian-city' (or add a pewter-city map to MAP_BUNDLES)."
+    },
+    {
+      "severity": "P1",
+      "area": "Catch Mechanic / Inventory",
+      "description": "The player begins with an empty inventory (createInitialGameState returns inventory: []) and no Pokeballs are awarded at any point — not during onboarding, not from the starter table script, not from Nurse Joy, and there is no PokeMart. BattleSystem.handleActionMenu() silently does nothing when ITEM is selected and no balls are found (ballEntry=undefined). The catch mechanic is fully implemented in CatchSystem.ts but is permanently inaccessible. Players cannot catch any Pokemon.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/types/GameState.ts",
+      "suggestion": "Initialize inventory with starting Pokeballs, e.g. [{itemId: 1, quantity: 5}] in createInitialGameState(), OR add a PokeMart script/NPC that sells Pokeballs, OR have the starter-selection script award them. Also show user feedback when selecting ITEM with empty inventory."
+    },
+    {
+      "severity": "P1",
+      "area": "Battle System / Status Effects",
+      "description": "In StatusEffects.ts checkStatusPreventsMove(), the paralysis check reads: 'if (Math.random() >= 0.25) { ... return { prevented: true } }'. This means 75% of the time the paralyzed Pokemon cannot move, whereas Gen 1 paralysis should only prevent movement 25% of the time. The comparison direction is inverted — it should be 'Math.random() < 0.25' to prevent movement with 25% probability.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/systems/battle/StatusEffects.ts",
+      "suggestion": "Change line 43 from 'if (Math.random() >= 0.25)' to 'if (Math.random() < 0.25)' to correctly implement 25% chance of full paralysis per turn."
+    },
+    {
+      "severity": "P2",
+      "area": "Badge System",
+      "description": "In GamePhaseUpdater.ts handleBattleDone(), the badge index is hardcoded to 0 regardless of the badgeReward value: 'const badgeIndex = npcEntity.badgeReward === \"BOULDER\" ? 0 : 0'. This means any future gym badge would also set index 0, overwriting the Boulder Badge slot. Only trivial for MVP (1 gym), but architecturally wrong.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/engine/GamePhaseUpdater.ts",
+      "suggestion": "Create a BADGE_INDICES map (e.g. { BOULDER: 0, CASCADE: 1, THUNDER: 2, ... }) and use badgeIndex = BADGE_INDICES[npcEntity.badgeReward] ?? 0."
+    },
+    {
+      "severity": "P2",
+      "area": "Game Lore / Gym Leader",
+      "description": "Brock's party in pewter-gym.json is [{speciesId: 1, level: 12}, {speciesId: 4, level: 14}] (Bulbasaur and Charmander), instead of his canonical Gen 1 team of Geodude (speciesId: 74) and Onix (speciesId: 95). Neither Geodude nor Onix are in the Pokemon data (only species 1-20 and 25 are defined). While starters aren't available as wild Pokemon either, assigning random starters to Brock breaks the Rock-type gym theme.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/data/maps/pewter-gym.json",
+      "suggestion": "Add Geodude (speciesId: 74) and Onix (speciesId: 95) to pokemon.ts/pokemon-data.ts and update Brock's party accordingly. Alternatively, use Rattata/Pidgey as placeholder Rock-type substitutes with a note."
+    },
+    {
+      "severity": "P2",
+      "area": "Onboarding / Journey 1",
+      "description": "The plan specifies 'first battle vs rival' after starter selection, but OnboardingSystem skips directly from rival naming to OVERWORLD. No rival encounter is implemented. The player also never exits the lab (no warp from inside an Oak's Lab map — the starter table zone is in pallet-town outdoor coordinates).",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/engine/OnboardingSystem.ts",
+      "suggestion": "Add a rival battle script triggered after starter selection, and optionally an Oak's Lab interior map to properly represent the new game start."
+    },
+    {
+      "severity": "P2",
+      "area": "Storage Warning / SSR",
+      "description": "The StorageWarning component renders in SSR HTML with 'Save data unavailable — progress won't be saved.' because useStorageWarning() calls isAvailable() inside useState(() => isAvailable()), and the SSR environment does not have localStorage. Even though page.tsx is 'use client', Next.js SSR still pre-renders it. This causes a flash of the warning on every initial load in any environment where the SSR pass fails isAvailable().",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/systems/SaveSystem.ts",
+      "suggestion": "Add a typeof window check in isAvailable(): 'if (typeof window === \"undefined\") return true'. This prevents the false negative during SSR while preserving the actual check on the client."
+    },
+    {
+      "severity": "P2",
+      "area": "Battle / Missing Move Animations",
+      "description": "The plan requires 'attack effects' as battle animations. Currently, attack effects are limited to audio cues (hit-normal/hit-super/hit-not-very). There are no visual flash, shake, or move animation effects on the sprites or battlefield.",
+      "file": "/Users/kevinliu/.appfactory/workspaces/pokemon/src/game/renderers/BattleRenderer.ts",
+      "suggestion": "Add a brief sprite flash or battlefield shake effect tied to DAMAGE events to provide visual attack feedback."
+    }
+  ],
+  "summary": "The game achieves a strong structural foundation: the build compiles cleanly, the 21-Pokemon roster with full stat/move/type data is excellent, the turn-based battle engine correctly implements Gen 1 mechanics (damage formula, STAB, crits, stat stages), the chiptune audio system is original and well-crafted, the text-crawl dialog system matches the original feel, and the mobile controls are functional. Visual polish is high where features work.\n\nHowever, five P1 issues prevent the game from meeting its core acceptance criteria. The catch mechanic is completely inaccessible because the player is never given Pokeballs and there is no shop. Route-1 warps use mismatched field names (targetTileX vs targetX), breaking the most critical navigation path in the game — the player cannot return to Pallet Town or advance to Viridian City from Route-1. Pewter Gym is data-complete but topologically orphaned: no map in the world connects to it, and its own exit warp references a non-existent 'pewter-city'. Paralysis is 3x more powerful than intended due to an inverted comparison. These bugs collectively break Journey 2 (catch), the gym requirement, and map traversal. The 'fail' verdict is driven by four dimensions below-threshold or at-threshold and the concentration of P1 bugs affecting gameplay fundamentals."
+}
