@@ -10,6 +10,12 @@ const STARTER_SPECIES: Record<string, number> = {
   SQUIRTLE: 7,
 }
 
+const RIVAL_COUNTER_SPECIES: Record<string, number> = {
+  BULBASAUR: 4,   // player picks Bulbasaur → rival gets Charmander
+  CHARMANDER: 7,  // player picks Charmander → rival gets Squirtle
+  SQUIRTLE: 1,    // player picks Squirtle → rival gets Bulbasaur
+}
+
 export class ScriptHandler {
   handle(
     scriptId: string,
@@ -22,6 +28,9 @@ export class ScriptHandler {
     switch (scriptId) {
       case 'STARTER_TABLE_TRIGGER':
         this.handleStarterTable(state, dialog)
+        break
+      case 'RIVAL_BATTLE_TRIGGER':
+        this.handleRivalBattle(state, dialog)
         break
       case 'NURSE_JOY_HEAL':
         this.handleNurseHeal(state, dialog)
@@ -60,12 +69,29 @@ export class ScriptHandler {
         state.party.push(pokemon.uuid)
         state.flags['script_done_STARTER_TABLE_TRIGGER'] = true
         state.flags['starterObtained'] = names[index]
+        state.flags['rivalStarterSpeciesId'] = RIVAL_COUNTER_SPECIES[names[index]] ?? 4
+        state.flags['rival_battle_pending'] = true
         dialog.startDialog([
           { lines: [`${names[index]} chose you!`] },
           { lines: ['Take good care of it!'] },
         ])
       },
     }])
+    state.phase = GamePhase.DIALOG
+  }
+
+  private handleRivalBattle(state: GameState, dialog: DialogSystem): void {
+    if (!state.flags['rival_battle_pending']) return
+    const speciesId = Number(state.flags['rivalStarterSpeciesId'] ?? 4)
+    const rivalName = String(state.flags['rivalName'] ?? 'BLUE')
+    // Validate the rival pokemon can be created (throws if invalid speciesId)
+    createPokemonInstance(speciesId, 5, rivalName)
+    state.flags['rival_battle_pending'] = false
+    state.trainerBattleNpcId = 'rival'
+    dialog.startDialog([
+      { lines: ['So you got a POKeMON?', 'Me too!'] },
+      { lines: ["Let's battle!"] },
+    ])
     state.phase = GamePhase.DIALOG
   }
 

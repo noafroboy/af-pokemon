@@ -46,6 +46,7 @@ export interface NPCDefinition {
   preBattleDialog?: string[]
   postBattleDialog?: string[]
   badgeReward?: string
+  activationFlag?: string
 }
 
 export interface ScriptZone {

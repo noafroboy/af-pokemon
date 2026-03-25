@@ -1,5 +1,6 @@
 import { GamePhase } from '../types/GameState'
 import type { GameState } from '../types/GameState'
+import type { BattleState } from '../types/BattleTypes'
 import type { Player } from '../entities/Player'
 import type { GameMap } from '../types/MapTypes'
 import type { InputManager } from './InputManager'
@@ -13,6 +14,9 @@ import type { OnboardingSystem } from './OnboardingSystem'
 import type { ScriptHandler } from './ScriptHandler'
 import type { AudioManager } from './AudioManager'
 import { TrainerNPC } from '../entities/NPC'
+import { buildPartyFromEntries } from '../entities/Trainer'
+import { createPokemonInstance } from '../entities/PokemonInstance'
+import type { PokemonInstance } from '../types/PokemonTypes'
 
 export const TRANSITION_FRAMES = 18
 
@@ -32,6 +36,7 @@ export interface PhaseUpdateCtx {
   isEncounterTransition: boolean
   pendingBattleNpc: string | null
   lastPhase: GamePhase
+  pendingTrainerBattle: boolean
 }
 
 export interface PhaseUpdateDeps {
@@ -77,6 +82,18 @@ function handleBattleDone(state: GameState, deps: PhaseUpdateDeps): void {
     const npcEntity = deps.npc.getNPCs().find(n => n.id === npcId) ?? null
     deps.npc.markDefeated(npcId, state)
     state.trainerBattleNpcId = undefined
+
+    const allFainted = state.partyPokemon.every(p => p.currentHp <= 0)
+    if (allFainted && state.lastPokemonCenter) {
+      state.currentMap = state.lastPokemonCenter.map
+      deps.player.tileX = state.lastPokemonCenter.tileX
+      deps.player.tileY = state.lastPokemonCenter.tileY
+      deps.loadMap(state.currentMap)
+      for (const p of state.partyPokemon) p.currentHp = p.maxHp
+      state.phase = GamePhase.OVERWORLD
+      return
+    }
+
     const hasBadge = npcEntity instanceof TrainerNPC && npcEntity.badgeReward != null
     if (hasBadge) {
       const badges = Array.isArray(state.flags['badges'])
@@ -102,6 +119,43 @@ function handleBattleDone(state: GameState, deps: PhaseUpdateDeps): void {
   }
 }
 
+function createTrainerBattleState(
+  npcEntity: TrainerNPC,
+  state: GameState
+): BattleState {
+  let party = npcEntity.party
+  // For the rival, use the dynamically determined counter-starter species
+  if (npcEntity.id === 'rival' && state.flags['rivalStarterSpeciesId']) {
+    party = [{ speciesId: Number(state.flags['rivalStarterSpeciesId']), level: 5 }]
+  }
+  const trainerOt = npcEntity.id === 'rival'
+    ? String(state.flags['rivalName'] ?? 'BLUE')
+    : npcEntity.trainerId
+  const trainerPokemon = party.length > 0
+    ? buildPartyFromEntries([party[0]], trainerOt)[0]
+    : createPokemonInstance(19, 5, trainerOt)
+  const playerPokemon: PokemonInstance = state.partyPokemon.length > 0
+    ? JSON.parse(JSON.stringify(state.partyPokemon[0])) as PokemonInstance
+    : createPokemonInstance(1, 5, 'PLAYER')
+  return {
+    wildPokemon: trainerPokemon,
+    playerPokemon,
+    playerPartyIndex: 0,
+    turn: 0,
+    events: [],
+    pendingEvents: [],
+    currentMessage: `${trainerOt} wants to battle!`,
+    awaitingInput: true,
+    battleOver: false,
+    playerFled: false,
+    caughtPokemon: null,
+    statStages: { player: {}, wild: {} },
+    battlePhase: 'INTRO',
+    cursorIndex: 0,
+    sleepTurns: { player: 0, wild: 0 },
+  }
+}
+
 export function updateGamePhases(
   dt: number, state: GameState, deps: PhaseUpdateDeps, ctx: PhaseUpdateCtx
 ): void {
@@ -122,7 +176,17 @@ export function updateGamePhases(
       if (input.wasJustPressed('Enter') || input.wasJustPressed('z')) dialog.handleConfirm()
       if (input.wasJustPressed('ArrowUp')) dialog.handleUp()
       if (input.wasJustPressed('ArrowDown')) dialog.handleDown()
-      if (!dialog.isActive()) state.phase = GamePhase.OVERWORLD
+      if (!dialog.isActive()) {
+        if (ctx.pendingTrainerBattle) {
+          ctx.pendingTrainerBattle = false
+          state.phase = GamePhase.TRANSITION
+          state.transitionTimer = TRANSITION_FRAMES
+          state.transitionTarget = null
+          ctx.isEncounterTransition = true
+        } else {
+          state.phase = GamePhase.OVERWORLD
+        }
+      }
     }
     input.update(); return
   }
@@ -134,12 +198,25 @@ export function updateGamePhases(
   if (state.phase === GamePhase.TRAINER_BATTLE_INTRO) {
     if (ctx.pendingBattleNpc) {
       const npcEntity = npc.getNPCs().find(n => n.id === ctx.pendingBattleNpc)
-      if (npcEntity) state.trainerBattleNpcId = npcEntity.id
-      ctx.pendingBattleNpc = null
-      state.phase = GamePhase.TRANSITION
-      state.transitionTimer = TRANSITION_FRAMES
-      state.transitionTarget = null
-      ctx.isEncounterTransition = true
+      if (npcEntity instanceof TrainerNPC) {
+        state.trainerBattleNpcId = npcEntity.id
+        const bs = createTrainerBattleState(npcEntity, state)
+        battle.setBattleState(bs)
+        ctx.pendingBattleNpc = null
+        if (npcEntity.preBattleDialog.length > 0) {
+          dialog.startDialog(npcEntity.preBattleDialog.map(line => ({ lines: [line] })))
+          ctx.pendingTrainerBattle = true
+          state.phase = GamePhase.DIALOG
+        } else {
+          state.phase = GamePhase.TRANSITION
+          state.transitionTimer = TRANSITION_FRAMES
+          state.transitionTarget = null
+          ctx.isEncounterTransition = true
+        }
+      } else {
+        ctx.pendingBattleNpc = null
+        state.phase = GamePhase.OVERWORLD
+      }
     }
     input.update(); return
   }
