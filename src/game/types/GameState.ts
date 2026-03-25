@@ -98,7 +98,7 @@ export function createInitialGameState(): GameState {
     playerTileY: 10,
     party: [],
     partyPokemon: [],
-    inventory: [{ itemId: 1, quantity: 5 }],
+    inventory: [{ itemId: 1, quantity: 10 }, { itemId: 2, quantity: 5 }],
     activeSlot: null,
     flags: {},
     transitionTimer: 0,

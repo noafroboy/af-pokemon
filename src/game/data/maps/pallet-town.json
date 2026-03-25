@@ -820,7 +820,7 @@
       1,
       1,
       1,
-      1,
+      0,
       1,
       1,
       1,
@@ -1230,7 +1230,7 @@
       "facing": "south",
       "spriteId": 1,
       "dialog": [
-        "Welcome to the world of POK\u00e9MON!"
+        "Welcome to the world of POKéMON!"
       ],
       "movementType": "static"
     },
@@ -1241,7 +1241,7 @@
       "facing": "south",
       "spriteId": 2,
       "dialog": [
-        "Pallet Town \u2014 A tranquil setting of new beginnings."
+        "Pallet Town — A tranquil setting of new beginnings."
       ],
       "movementType": "static"
     },
@@ -1252,7 +1252,7 @@
       "facing": "south",
       "spriteId": 3,
       "dialog": [
-        "They say the route to the north is full of wild POK\u00e9MON!"
+        "They say the route to the north is full of wild POKéMON!"
       ],
       "movementType": "static"
     },

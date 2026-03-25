@@ -1220,7 +1220,7 @@
       1,
       1,
       1,
-      1,
+      0,
       1,
       1,
       1,
@@ -1800,7 +1800,7 @@
       1,
       1,
       1,
-      1,
+      0,
       1,
       1,
       1,
@@ -1838,7 +1838,7 @@
       "facing": "south",
       "spriteId": 4,
       "dialog": [
-        "Wild POK\u00e9MON hide in the tall grass. Be careful!"
+        "Wild POKéMON hide in the tall grass. Be careful!"
       ],
       "movementType": "static"
     },
@@ -1874,5 +1874,28 @@
     ]
   },
   "scriptZones": [],
-  "music": "route1"
+  "music": "route1",
+  "encounters": {
+    "encounterRate": 25,
+    "table": [
+      {
+        "speciesId": 16,
+        "minLevel": 2,
+        "maxLevel": 5,
+        "weight": 40
+      },
+      {
+        "speciesId": 19,
+        "minLevel": 2,
+        "maxLevel": 4,
+        "weight": 40
+      },
+      {
+        "speciesId": 10,
+        "minLevel": 3,
+        "maxLevel": 5,
+        "weight": 20
+      }
+    ]
+  }
 }
