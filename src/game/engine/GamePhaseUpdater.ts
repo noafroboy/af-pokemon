@@ -181,7 +181,10 @@ export function updateGamePhases(
       break
     }
     case GamePhase.BATTLE: {
-      if (battle.update(state) === 'DONE') handleBattleDone(state, deps)
+      if (battle.update(state) === 'DONE') {
+        handleBattleDone(state, deps)
+        overworld.resetEncounterCooldown()
+      }
       break
     }
   }

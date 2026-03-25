@@ -17,6 +17,7 @@ export type OverworldResult =
 
 export class OverworldSystem {
   private lastScriptZone: string | null = null
+  private encounterCooldown = 0
   private input: InputManager
   private npcSystem: NPCSystem | null = null
 
@@ -29,7 +30,10 @@ export class OverworldSystem {
     this.npcSystem = npcSystem
   }
 
+  resetEncounterCooldown(): void { this.encounterCooldown = 30 }
+
   update(player: Player, state: GameState, map: GameMap | null): OverworldResult {
+    if (this.encounterCooldown > 0) this.encounterCooldown--
     // A-press NPC interaction
     if (this.input.wasJustPressed('z')) {
       const result = this.checkNPCInteraction(player)
@@ -174,6 +178,7 @@ export class OverworldSystem {
     const terrainTile = map.layers.terrain[idx]
 
     if (terrainTile !== TALL_GRASS_TILE) return null
+    if (this.encounterCooldown > 0) return null
 
     const roll = Math.random()
     if (roll < config.encounterRate / 255) {
