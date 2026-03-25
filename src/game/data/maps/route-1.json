@@ -1817,16 +1817,16 @@
       "tileX": 10,
       "tileY": 29,
       "targetMap": "pallet-town",
-      "targetTileX": 10,
-      "targetTileY": 1,
+      "targetX": 10,
+      "targetY": 1,
       "direction": "south"
     },
     {
       "tileX": 10,
       "tileY": 0,
       "targetMap": "viridian-city",
-      "targetTileX": 10,
-      "targetTileY": 28,
+      "targetX": 10,
+      "targetY": 28,
       "direction": "north"
     }
   ],

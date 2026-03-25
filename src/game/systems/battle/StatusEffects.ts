@@ -39,8 +39,8 @@ export function checkStatusPreventsMove(
   }
 
   if (pokemon.status === StatusCondition.PARALYSIS) {
-    // >= 0.25 means paralyzed (25% chance = threshold at 0.25)
-    if (Math.random() >= 0.25) {
+    // 25% chance of being paralyzed each turn
+    if (Math.random() < 0.25) {
       events.push({ type: 'MESSAGE', text: `${side === 'player' ? 'Your' : 'The wild'} Pokemon is fully paralyzed!` })
       return { prevented: true, events }
     }
