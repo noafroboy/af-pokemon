@@ -16,6 +16,7 @@ export type OverworldResult =
   | { type: 'SCRIPT'; scriptId: string }
 
 export class OverworldSystem {
+  private lastScriptZone: string | null = null
   private input: InputManager
   private npcSystem: NPCSystem | null = null
 
@@ -64,12 +65,14 @@ export class OverworldSystem {
       return { type: 'ENCOUNTER', encounterTable: encounter }
     }
 
-    // Script zones
+    // Script zones — fire once per entry, not every tick
     if (this.npcSystem) {
       const scriptId = this.npcSystem.checkScriptZones(player, map)
-      if (scriptId) {
+      if (scriptId && scriptId !== this.lastScriptZone && !state.flags[`script_done_${scriptId}`]) {
+        this.lastScriptZone = scriptId
         return { type: 'SCRIPT', scriptId }
       }
+      if (!scriptId) this.lastScriptZone = null
     }
 
     // Process queued movement
