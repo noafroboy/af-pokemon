@@ -2728,6 +2728,14 @@
       "targetX": 7,
       "targetY": 8,
       "direction": "east"
+    },
+    {
+      "tileX": 4,
+      "tileY": 5,
+      "targetMap": "pewter-gym",
+      "targetX": 7,
+      "targetY": 13,
+      "direction": "west"
     }
   ],
   "npcs": [
