@@ -61,7 +61,7 @@ export class GameEngine {
     this.applyV1Save()
 
     this.state.phase = this.state.flags['NEW_GAME_STARTED'] ? GamePhase.OVERWORLD : GamePhase.TITLE
-    this.phaseCtx = { isEncounterTransition: false, pendingBattleNpc: null, lastPhase: this.state.phase }
+    this.phaseCtx = { isEncounterTransition: false, pendingBattleNpc: null, lastPhase: this.state.phase, pendingTrainerBattle: false }
 
     this.camera = new Camera()
     this.npcSystem = new NPCSystem()

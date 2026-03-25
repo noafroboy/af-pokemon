@@ -1255,6 +1255,36 @@
         "They say the route to the north is full of wild POK\u00e9MON!"
       ],
       "movementType": "static"
+    },
+    {
+      "id": "rival",
+      "tileX": 10,
+      "tileY": 3,
+      "facing": "south",
+      "spriteId": 5,
+      "dialog": [
+        "Smell ya later!"
+      ],
+      "movementType": "static",
+      "isTrainer": true,
+      "trainerId": "rival",
+      "party": [
+        {
+          "speciesId": 4,
+          "level": 5
+        }
+      ],
+      "moneyBase": 0,
+      "losRange": 3,
+      "preBattleDialog": [
+        "So you got a POKeMON?",
+        "Me too! Let's battle!"
+      ],
+      "postBattleDialog": [
+        "Smell ya later!"
+      ],
+      "badgeReward": null,
+      "activationFlag": "rival_battle_pending"
     }
   ],
   "encounters": null,

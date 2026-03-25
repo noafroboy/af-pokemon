@@ -18,6 +18,7 @@ export class NPCSystem {
     const flagPrefix = `trainer_defeated_`
     for (const def of map.npcs) {
       const wasDefeated = !!state.flags[`${flagPrefix}${def.id}`]
+      const activationFlagActive = !def.activationFlag || !!state.flags[def.activationFlag]
       if (def.isTrainer && def.party && def.trainerId !== undefined) {
         const t = new TrainerNPC(
           def.id,
@@ -34,8 +35,8 @@ export class NPCSystem {
           def.postBattleDialog ?? [],
           def.badgeReward ?? null
         )
-        t.defeated = wasDefeated
-        if (wasDefeated) this.defeatedIds.add(def.id)
+        t.defeated = wasDefeated || !activationFlagActive
+        if (t.defeated) this.defeatedIds.add(def.id)
         this.npcs.push(t)
       } else {
         const npc = new NPC(
@@ -106,7 +107,7 @@ export class NPCSystem {
 
   isCollision(tileX: number, tileY: number): boolean {
     for (const npc of this.npcs) {
-      if (npc.tileX === tileX && npc.tileY === tileY) return true
+      if (!npc.defeated && npc.tileX === tileX && npc.tileY === tileY) return true
     }
     return false
   }
